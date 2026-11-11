@@ -93,5 +93,101 @@ export default class GameScene extends Phaser.Scene {
       y: this.offsetY + tile2.gridY * this.tileSize + this.tileSize / 2,
       duration: 200,
     });
+
+    this.time.delayedCall(200, () => this.checkMatches());
+  }
+
+  checkMatches() {
+    const matches = new Set();
+
+    // Горизонтальные
+    for (let row = 0; row < this.boardSize; row++) {
+      for (let col = 0; col < this.boardSize - 2; col++) {
+        const tile1 = this.tiles[row][col];
+        const tile2 = this.tiles[row][col + 1];
+        const tile3 = this.tiles[row][col + 2];
+
+        if (tile1 && tile2 && tile3 && tile1.fillColor === tile2.fillColor && tile2.fillColor === tile3.fillColor) {
+          matches.add(tile1);
+          matches.add(tile2);
+          matches.add(tile3);
+        }
+      }
+    }
+
+    // Вертикальные
+    for (let col = 0; col < this.boardSize; col++) {
+      for (let row = 0; row < this.boardSize - 2; row++) {
+        const tile1 = this.tiles[row][col];
+        const tile2 = this.tiles[row + 1][col];
+        const tile3 = this.tiles[row + 2][col];
+
+        if (tile1 && tile2 && tile3 && tile1.fillColor === tile2.fillColor && tile2.fillColor === tile3.fillColor) {
+          matches.add(tile1);
+          matches.add(tile2);
+          matches.add(tile3);
+        }
+      }
+    }
+
+    if (matches.size > 0) {
+      matches.forEach(tile => {
+        tile.destroy();
+        this.tiles[tile.gridY][tile.gridX] = null;
+      });
+
+      // Запускаем гравитацию и добавление новых фишек
+      this.time.delayedCall(250, () => {
+        this.dropTiles();
+        this.refillBoard();
+      });
+    }
+  }
+
+  // Гравитация: фишки падают вниз
+  dropTiles() {
+    for (let col = 0; col < this.boardSize; col++) {
+      for (let row = this.boardSize - 1; row >= 0; row--) {
+        if (this.tiles[row][col] === null) {
+          for (let r = row - 1; r >= 0; r--) {
+            if (this.tiles[r][col] !== null) {
+              const tileToMove = this.tiles[r][col];
+              
+              this.tiles[row][col] = tileToMove;
+              this.tiles[r][col] = null;
+              tileToMove.gridY = row;
+
+              this.tweens.add({
+                targets: tileToMove,
+                y: this.offsetY + row * this.tileSize + this.tileSize / 2,
+                duration: 200,
+              });
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Создаем новые фишки на месте пустот
+  refillBoard() {
+    for (let col = 0; col < this.boardSize; col++) {
+      for (let row = 0; row < this.boardSize; row++) {
+        if (this.tiles[row][col] === null) {
+          const x = this.offsetX + col * this.tileSize + this.tileSize / 2;
+          const y = this.offsetY + row * this.tileSize + this.tileSize / 2;
+          const color = this.colors[Math.floor(Math.random() * this.colors.length)];
+
+          const tile = this.add.rectangle(x, y, this.tileSize - 4, this.tileSize - 4, color);
+          tile.setInteractive({ useHandCursor: true });
+          tile.gridX = col;
+          tile.gridY = row;
+          tile.on('pointerdown', () => this.handleTileClick(tile));
+          
+          this.tiles[row][col] = tile;
+        }
+      }
+    }
   }
 }
