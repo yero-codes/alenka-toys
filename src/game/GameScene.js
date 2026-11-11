@@ -12,7 +12,6 @@ export default class GameScene extends Phaser.Scene {
     this.offsetY = (600 - this.boardSize * this.tileSize) / 2;
 
     this.colors = [0xff0000, 0x0000ff, 0x00ff00, 0xffff00, 0x00ffff, 0xff00ff];
-    this.selectedTile = null;
     this.tiles = [];
 
     for (let row = 0; row < this.boardSize; row++) {
@@ -26,7 +25,9 @@ export default class GameScene extends Phaser.Scene {
         tile.setInteractive({ useHandCursor: true });
         tile.gridX = col;
         tile.gridY = row;
-        tile.on('pointerdown', () => this.handleTileClick(tile));
+        
+        this.input.setDraggable(tile);
+        tile.on('drag', (pointer, dragX, dragY) => this.handleTileDrag(tile, dragX, dragY));
         this.tiles[row][col] = tile;
       }
     }
@@ -41,32 +42,6 @@ export default class GameScene extends Phaser.Scene {
     backButton.on('pointerdown', () => {
       this.scene.start('MainMenu');
     });
-  }
-
-  handleTileClick(tile) {
-    if (!this.selectedTile) {
-      this.selectedTile = tile;
-      tile.setStrokeStyle(4, 0xffffff);
-    } else {
-      if (this.selectedTile === tile) {
-        this.selectedTile.setStrokeStyle(0);
-        this.selectedTile = null;
-        return;
-      }
-
-      const dx = Math.abs(this.selectedTile.gridX - tile.gridX);
-      const dy = Math.abs(this.selectedTile.gridY - tile.gridY);
-
-      if ((dx === 1 && dy === 0) || (dx === 0 && dy === 1)) {
-        this.swapTiles(this.selectedTile, tile);
-        this.selectedTile.setStrokeStyle(0);
-        this.selectedTile = null;
-      } else {
-        this.selectedTile.setStrokeStyle(0);
-        this.selectedTile = tile;
-        tile.setStrokeStyle(4, 0xffffff);
-      }
-    }
   }
 
   swapTiles(tile1, tile2) {
@@ -96,11 +71,57 @@ export default class GameScene extends Phaser.Scene {
 
     this.time.delayedCall(200, () => this.checkMatches());
   }
+       ///////////////////////////////////////
+       
+    handleTileDrag(tile, dragX, dragY) {
+    // 1. Вычисляем, насколько далеко мы увели палец от центра фишки
+    const dx = dragX - tile.x;
+    const dy = dragY - tile.y;
 
-    checkMatches() {
+    // 2. Если палец сдвинулся достаточно далеко (больше 20 пикселей)
+    if (Math.abs(dx) > 20 || Math.abs(dy) > 20) {
+      let targetX = tile.gridX;
+      let targetY = tile.gridY;
+
+      // 3. Определяем направление
+      if (Math.abs(dx) > Math.abs(dy)) {
+        targetX += dx > 0 ? 1 : -1; // Вправо или влево
+      } else {
+        targetY += dy > 0 ? 1 : -1; // Вниз или вверх
+      }
+
+      // 4. Проверяем, что не вышли за границы
+      if (targetX >= 0 && targetX < this.boardSize && targetY >= 0 && targetY < this.boardSize) {
+        const targetTile = this.tiles[targetY][targetX];
+        if (targetTile) {
+          // 5. Отключаем перетаскивание на время обмена
+          this.input.setDraggable(tile, false);
+          this.input.setDraggable(targetTile, false);
+
+          // 6. Меняем местами
+          this.swapTiles(tile, targetTile);
+
+          // 7. Возвращаем перетаскивание через 200 мс (после анимации)
+          this.time.delayedCall(200, () => {
+            if (tile && tile.active) this.input.setDraggable(tile, true);
+            if (targetTile && targetTile.active) this.input.setDraggable(targetTile, true);
+          });
+        }
+      }
+
+      // 8. Возвращаем фишку на место (если обмен не удался)
+      this.tweens.add({
+        targets: tile,
+        x: this.offsetX + tile.gridX * this.tileSize + this.tileSize / 2,
+        y: this.offsetY + tile.gridY * this.tileSize + this.tileSize / 2,
+        duration: 100,
+      });
+    }
+  }
+       /////////////////////////////
+  checkMatches() {
     const matches = new Set();
 
-    // --- ПРОВЕРКА ГОРИЗОНТАЛЬНЫХ ЛИНИЙ ---
     for (let row = 0; row < this.boardSize; row++) {
       let count = 1;
       for (let col = 1; col < this.boardSize; col++) {
@@ -110,25 +131,17 @@ export default class GameScene extends Phaser.Scene {
         if (prevTile && currTile && prevTile.fillColor === currTile.fillColor) {
           count++;
         } else {
-          // Если линия закончилась, и она была 3 или больше
           if (count >= 3) {
             const startCol = col - count;
-            // Если 4 в ряд — создаем Ракету (4 матч)
             if (count === 4) {
-              const bonusTile = this.tiles[row][startCol + 1]; // Берем вторую фишку в линии
-              bonusTile.setData('bonus', 'rocket'); // Помечаем как бонус
-              bonusTile.setStrokeStyle(4, 0x000000); // Черная обводка для видимости
-              console.log('4 матч! Создана Ракета');
+              const bonusTile = this.tiles[row][startCol + 1];
+              bonusTile.setData('bonus', 'rocket');
+              bonusTile.setStrokeStyle(4, 0x000000);
+            } else if (count >= 5) {
+              const bonusTile = this.tiles[row][startCol + 2];
+              bonusTile.setData('bonus', 'bomb');
+              bonusTile.setStrokeStyle(4, 0xffffff);
             }
-            // Если 5 в ряд — создаем Бомбу (5 матч)
-            else if (count >= 5) {
-              const bonusTile = this.tiles[row][startCol + 2]; // Берем центральную фишку
-              bonusTile.setData('bonus', 'bomb'); // Помечаем как бонус
-              bonusTile.setStrokeStyle(4, 0xffffff); // Белая обводка для видимости
-              console.log('5 матч! Создана Бомба');
-            }
-            
-            // Добавляем все фишки линии в список на удаление
             for (let i = startCol; i < col; i++) {
               matches.add(this.tiles[row][i]);
             }
@@ -136,19 +149,16 @@ export default class GameScene extends Phaser.Scene {
           count = 1;
         }
       }
-      // Проверка в конце строки (если линия тянется до края)
       if (count >= 3) {
         const startCol = this.boardSize - count;
         if (count === 4) {
           const bonusTile = this.tiles[row][startCol + 1];
           bonusTile.setData('bonus', 'rocket');
           bonusTile.setStrokeStyle(4, 0x000000);
-          console.log('4 матч! Создана Ракета');
         } else if (count >= 5) {
           const bonusTile = this.tiles[row][startCol + 2];
           bonusTile.setData('bonus', 'bomb');
           bonusTile.setStrokeStyle(4, 0xffffff);
-          console.log('5 матч! Создана Бомба');
         }
         for (let i = startCol; i < this.boardSize; i++) {
           matches.add(this.tiles[row][i]);
@@ -156,7 +166,6 @@ export default class GameScene extends Phaser.Scene {
       }
     }
 
-    // --- ПРОВЕРКА ВЕРТИКАЛЬНЫХ ЛИНИЙ ---
     for (let col = 0; col < this.boardSize; col++) {
       let count = 1;
       for (let row = 1; row < this.boardSize; row++) {
@@ -172,12 +181,10 @@ export default class GameScene extends Phaser.Scene {
               const bonusTile = this.tiles[startRow + 1][col];
               bonusTile.setData('bonus', 'rocket');
               bonusTile.setStrokeStyle(4, 0x000000);
-              console.log('4 матч! Создана Ракета');
             } else if (count >= 5) {
               const bonusTile = this.tiles[startRow + 2][col];
               bonusTile.setData('bonus', 'bomb');
               bonusTile.setStrokeStyle(4, 0xffffff);
-              console.log('5 матч! Создана Бомба');
             }
             for (let i = startRow; i < row; i++) {
               matches.add(this.tiles[i][col]);
@@ -186,19 +193,16 @@ export default class GameScene extends Phaser.Scene {
           count = 1;
         }
       }
-      // Проверка в конце столбца
       if (count >= 3) {
         const startRow = this.boardSize - count;
         if (count === 4) {
           const bonusTile = this.tiles[startRow + 1][col];
           bonusTile.setData('bonus', 'rocket');
           bonusTile.setStrokeStyle(4, 0x000000);
-          console.log('4 матч! Создана Ракета');
         } else if (count >= 5) {
           const bonusTile = this.tiles[startRow + 2][col];
           bonusTile.setData('bonus', 'bomb');
           bonusTile.setStrokeStyle(4, 0xffffff);
-          console.log('5 матч! Создана Бомба');
         }
         for (let i = startRow; i < this.boardSize; i++) {
           matches.add(this.tiles[i][col]);
@@ -206,13 +210,9 @@ export default class GameScene extends Phaser.Scene {
       }
     }
 
-    // --- УДАЛЕНИЕ ---
     if (matches.size > 0) {
       matches.forEach(tile => {
-        // Если это бонусная фишка, мы НЕ удаляем её, а оставляем на поле
-        if (tile.getData('bonus')) {
-          return;
-        }
+        if (tile.getData('bonus')) return;
         tile.destroy();
         this.tiles[tile.gridY][tile.gridX] = null;
       });
@@ -224,8 +224,7 @@ export default class GameScene extends Phaser.Scene {
       });
     }
   }
-  
-  // Гравитация: фишки падают вниз
+
   dropTiles() {
     for (let col = 0; col < this.boardSize; col++) {
       for (let row = this.boardSize - 1; row >= 0; row--) {
@@ -233,11 +232,9 @@ export default class GameScene extends Phaser.Scene {
           for (let r = row - 1; r >= 0; r--) {
             if (this.tiles[r][col] !== null) {
               const tileToMove = this.tiles[r][col];
-              
               this.tiles[row][col] = tileToMove;
               this.tiles[r][col] = null;
               tileToMove.gridY = row;
-
               this.tweens.add({
                 targets: tileToMove,
                 y: this.offsetY + row * this.tileSize + this.tileSize / 2,
@@ -251,7 +248,6 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
-  // Создаем новые фишки на месте пустот
   refillBoard() {
     for (let col = 0; col < this.boardSize; col++) {
       for (let row = 0; row < this.boardSize; row++) {
@@ -264,7 +260,9 @@ export default class GameScene extends Phaser.Scene {
           tile.setInteractive({ useHandCursor: true });
           tile.gridX = col;
           tile.gridY = row;
-          tile.on('pointerdown', () => this.handleTileClick(tile));
+          
+          this.input.setDraggable(tile);
+          tile.on('drag', (pointer, dragX, dragY) => this.handleTileDrag(tile, dragX, dragY));
           
           this.tiles[row][col] = tile;
         }

@@ -13,7 +13,7 @@ function PhaserGame() {
       height: 600,
       parent: gameRef.current,
       backgroundColor: '#e0f7fa',
-      scene: [MainMenu, GameScene], // Передаем классы сцен
+      scene: [MainMenu, GameScene],
     };
 
     const game = new Phaser.Game(config);
@@ -21,7 +21,7 @@ function PhaserGame() {
     return () => {
       game.destroy(true);
     };
-  }, []);
+  }, []); // <--- ВОТ ТАК ПРАВИЛЬНО
 
   return <div ref={gameRef} id="game-container"></div>;
 }
