@@ -97,53 +97,134 @@ export default class GameScene extends Phaser.Scene {
     this.time.delayedCall(200, () => this.checkMatches());
   }
 
-  checkMatches() {
+    checkMatches() {
     const matches = new Set();
 
-    // Горизонтальные
+    // --- ПРОВЕРКА ГОРИЗОНТАЛЬНЫХ ЛИНИЙ ---
     for (let row = 0; row < this.boardSize; row++) {
-      for (let col = 0; col < this.boardSize - 2; col++) {
-        const tile1 = this.tiles[row][col];
-        const tile2 = this.tiles[row][col + 1];
-        const tile3 = this.tiles[row][col + 2];
+      let count = 1;
+      for (let col = 1; col < this.boardSize; col++) {
+        const prevTile = this.tiles[row][col - 1];
+        const currTile = this.tiles[row][col];
 
-        if (tile1 && tile2 && tile3 && tile1.fillColor === tile2.fillColor && tile2.fillColor === tile3.fillColor) {
-          matches.add(tile1);
-          matches.add(tile2);
-          matches.add(tile3);
+        if (prevTile && currTile && prevTile.fillColor === currTile.fillColor) {
+          count++;
+        } else {
+          // Если линия закончилась, и она была 3 или больше
+          if (count >= 3) {
+            const startCol = col - count;
+            // Если 4 в ряд — создаем Ракету (4 матч)
+            if (count === 4) {
+              const bonusTile = this.tiles[row][startCol + 1]; // Берем вторую фишку в линии
+              bonusTile.setData('bonus', 'rocket'); // Помечаем как бонус
+              bonusTile.setStrokeStyle(4, 0x000000); // Черная обводка для видимости
+              console.log('4 матч! Создана Ракета');
+            }
+            // Если 5 в ряд — создаем Бомбу (5 матч)
+            else if (count >= 5) {
+              const bonusTile = this.tiles[row][startCol + 2]; // Берем центральную фишку
+              bonusTile.setData('bonus', 'bomb'); // Помечаем как бонус
+              bonusTile.setStrokeStyle(4, 0xffffff); // Белая обводка для видимости
+              console.log('5 матч! Создана Бомба');
+            }
+            
+            // Добавляем все фишки линии в список на удаление
+            for (let i = startCol; i < col; i++) {
+              matches.add(this.tiles[row][i]);
+            }
+          }
+          count = 1;
+        }
+      }
+      // Проверка в конце строки (если линия тянется до края)
+      if (count >= 3) {
+        const startCol = this.boardSize - count;
+        if (count === 4) {
+          const bonusTile = this.tiles[row][startCol + 1];
+          bonusTile.setData('bonus', 'rocket');
+          bonusTile.setStrokeStyle(4, 0x000000);
+          console.log('4 матч! Создана Ракета');
+        } else if (count >= 5) {
+          const bonusTile = this.tiles[row][startCol + 2];
+          bonusTile.setData('bonus', 'bomb');
+          bonusTile.setStrokeStyle(4, 0xffffff);
+          console.log('5 матч! Создана Бомба');
+        }
+        for (let i = startCol; i < this.boardSize; i++) {
+          matches.add(this.tiles[row][i]);
         }
       }
     }
 
-    // Вертикальные
+    // --- ПРОВЕРКА ВЕРТИКАЛЬНЫХ ЛИНИЙ ---
     for (let col = 0; col < this.boardSize; col++) {
-      for (let row = 0; row < this.boardSize - 2; row++) {
-        const tile1 = this.tiles[row][col];
-        const tile2 = this.tiles[row + 1][col];
-        const tile3 = this.tiles[row + 2][col];
+      let count = 1;
+      for (let row = 1; row < this.boardSize; row++) {
+        const prevTile = this.tiles[row - 1][col];
+        const currTile = this.tiles[row][col];
 
-        if (tile1 && tile2 && tile3 && tile1.fillColor === tile2.fillColor && tile2.fillColor === tile3.fillColor) {
-          matches.add(tile1);
-          matches.add(tile2);
-          matches.add(tile3);
+        if (prevTile && currTile && prevTile.fillColor === currTile.fillColor) {
+          count++;
+        } else {
+          if (count >= 3) {
+            const startRow = row - count;
+            if (count === 4) {
+              const bonusTile = this.tiles[startRow + 1][col];
+              bonusTile.setData('bonus', 'rocket');
+              bonusTile.setStrokeStyle(4, 0x000000);
+              console.log('4 матч! Создана Ракета');
+            } else if (count >= 5) {
+              const bonusTile = this.tiles[startRow + 2][col];
+              bonusTile.setData('bonus', 'bomb');
+              bonusTile.setStrokeStyle(4, 0xffffff);
+              console.log('5 матч! Создана Бомба');
+            }
+            for (let i = startRow; i < row; i++) {
+              matches.add(this.tiles[i][col]);
+            }
+          }
+          count = 1;
+        }
+      }
+      // Проверка в конце столбца
+      if (count >= 3) {
+        const startRow = this.boardSize - count;
+        if (count === 4) {
+          const bonusTile = this.tiles[startRow + 1][col];
+          bonusTile.setData('bonus', 'rocket');
+          bonusTile.setStrokeStyle(4, 0x000000);
+          console.log('4 матч! Создана Ракета');
+        } else if (count >= 5) {
+          const bonusTile = this.tiles[startRow + 2][col];
+          bonusTile.setData('bonus', 'bomb');
+          bonusTile.setStrokeStyle(4, 0xffffff);
+          console.log('5 матч! Создана Бомба');
+        }
+        for (let i = startRow; i < this.boardSize; i++) {
+          matches.add(this.tiles[i][col]);
         }
       }
     }
 
+    // --- УДАЛЕНИЕ ---
     if (matches.size > 0) {
       matches.forEach(tile => {
+        // Если это бонусная фишка, мы НЕ удаляем её, а оставляем на поле
+        if (tile.getData('bonus')) {
+          return;
+        }
         tile.destroy();
         this.tiles[tile.gridY][tile.gridX] = null;
       });
 
-      // Запускаем гравитацию и добавление новых фишек
       this.time.delayedCall(250, () => {
         this.dropTiles();
         this.refillBoard();
+        this.time.delayedCall(300, () => this.checkMatches());
       });
     }
   }
-
+  
   // Гравитация: фишки падают вниз
   dropTiles() {
     for (let col = 0; col < this.boardSize; col++) {
