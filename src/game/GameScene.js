@@ -59,17 +59,49 @@ export default class GameScene extends Phaser.Scene {
       for (let col = 0; col < this.boardSize; col++) {
         const x = this.offsetX + col * this.tileSize + this.tileSize / 2;
         const y = this.offsetY + row * this.tileSize + this.tileSize / 2;
-        
+
         const type = this.tileTypes[Math.floor(Math.random() * this.tileTypes.length)];
 
         const tile = this.add.image(x, y, type).setDisplaySize(this.tileSize - 8, this.tileSize - 8);
         tile.setInteractive({ useHandCursor: true });
         tile.gridX = col;
         tile.gridY = row;
-        
-        this.input.setDraggable(tile);
-        tile.on('drag', (pointer, dragX, dragY) => this.handleTileDrag(tile, dragX, dragY));
+
+        tile.on('pointerdown', (pointer) => {
+          // Запоминаем, где нажали
+          this.startX = pointer.x;
+          this.startY = pointer.y;
+          this.dragTile = tile; // Запоминаем, какую фишку тащим
+        });
         this.tiles[row][col] = tile;
+        // Обработчик отпускания пальца
+        this.input.on('pointerup', (pointer) => {
+          if (!this.dragTile) return;
+
+          const dx = pointer.x - this.startX;
+          const dy = pointer.y - this.startY;
+
+          // Если сдвинули больше 20 пикселей
+          if (Math.abs(dx) > 20 || Math.abs(dy) > 20) {
+            let targetX = this.dragTile.gridX;
+            let targetY = this.dragTile.gridY;
+
+            if (Math.abs(dx) > Math.abs(dy)) {
+              targetX += dx > 0 ? 1 : -1;
+            } else {
+              targetY += dy > 0 ? 1 : -1;
+            }
+
+            if (targetX >= 0 && targetX < this.boardSize && targetY >= 0 && targetY < this.boardSize) {
+              const targetTile = this.tiles[targetY][targetX];
+              if (targetTile) {
+                this.swapTiles(this.dragTile, targetTile);
+              }
+            }
+          }
+
+          this.dragTile = null;
+        });
       }
     }
 
@@ -86,14 +118,22 @@ export default class GameScene extends Phaser.Scene {
   }
 
   handleTileDrag(tile, dragX, dragY) {
-    // Ограничиваем перетаскивание только одной клеткой в сторону
+    // Вычисляем центр клетки
     const centerX = this.offsetX + tile.gridX * this.tileSize + this.tileSize / 2;
     const centerY = this.offsetY + tile.gridY * this.tileSize + this.tileSize / 2;
 
     const dx = dragX - centerX;
     const dy = dragY - centerY;
 
-    // Если сдвинули больше половины клетки — меняем местами
+    // Ограничиваем движение
+    const maxOffset = this.tileSize / 2;
+    const clampedX = centerX + Math.max(-maxOffset, Math.min(maxOffset, dx));
+    const clampedY = centerY + Math.max(-maxOffset, Math.min(maxOffset, dy));
+
+    tile.x = clampedX;
+    tile.y = clampedY;
+
+    // Если сдвинули больше половины — меняем местами
     if (Math.abs(dx) > this.tileSize / 2 || Math.abs(dy) > this.tileSize / 2) {
       let targetX = tile.gridX;
       let targetY = tile.gridY;
@@ -119,17 +159,10 @@ export default class GameScene extends Phaser.Scene {
         }
       }
     }
-
-    // Возвращаем фишку на место (в любом случае)
-    this.tweens.add({
-      targets: tile,
-      x: centerX,
-      y: centerY,
-      duration: 100,
-    });
   }
 
   swapTiles(tile1, tile2) {
+    // 1. Меняем местами в массиве
     const tempX = tile1.gridX;
     const tempY = tile1.gridY;
     tile1.gridX = tile2.gridX;
@@ -140,6 +173,7 @@ export default class GameScene extends Phaser.Scene {
     this.tiles[tile1.gridY][tile1.gridX] = tile1;
     this.tiles[tile2.gridY][tile2.gridX] = tile2;
 
+    // 2. Анимация обмена
     this.tweens.add({
       targets: tile1,
       x: this.offsetX + tile1.gridX * this.tileSize + this.tileSize / 2,
@@ -154,7 +188,38 @@ export default class GameScene extends Phaser.Scene {
       duration: 200,
     });
 
-    this.time.delayedCall(200, () => this.checkMatches());
+    // 3. Проверяем, есть ли совпадения ПОСЛЕ обмена
+    this.time.delayedCall(200, () => {
+      const hasMatches = this.checkMatches(); // <--- ВОТ ЗДЕСЬ МЫ ЛОВИМ РЕЗУЛЬТАТ
+
+      if (!hasMatches) {
+        // Если совпадений нет — откатываем обмен
+        this.tiles[tile1.gridY][tile1.gridX] = tile2;
+        this.tiles[tile2.gridY][tile2.gridX] = tile1;
+
+        const tempX2 = tile1.gridX;
+        const tempY2 = tile1.gridY;
+        tile1.gridX = tile2.gridX;
+        tile1.gridY = tile2.gridY;
+        tile2.gridX = tempX2;
+        tile2.gridY = tempY2;
+
+        // Анимация возврата
+        this.tweens.add({
+          targets: tile1,
+          x: this.offsetX + tile1.gridX * this.tileSize + this.tileSize / 2,
+          y: this.offsetY + tile1.gridY * this.tileSize + this.tileSize / 2,
+          duration: 200,
+        });
+
+        this.tweens.add({
+          targets: tile2,
+          x: this.offsetX + tile2.gridX * this.tileSize + this.tileSize / 2,
+          y: this.offsetY + tile2.gridY * this.tileSize + this.tileSize / 2,
+          duration: 200,
+        });
+      }
+    });
   }
 
   createBonus(tile, type) {
@@ -167,7 +232,7 @@ export default class GameScene extends Phaser.Scene {
 
     const bonusImg = this.add.image(x, y, `bonus-${type}`)
       .setDisplaySize(this.tileSize - 10, this.tileSize - 10);
-    
+
     bonusImg.setInteractive({ useHandCursor: true });
     bonusImg.gridX = gridX;
     bonusImg.gridY = gridY;
@@ -321,7 +386,11 @@ export default class GameScene extends Phaser.Scene {
         this.refillBoard();
         this.time.delayedCall(300, () => this.checkMatches());
       });
+
+      return true;
     }
+
+    return false;
   }
 
   dropTiles() {
@@ -359,10 +428,13 @@ export default class GameScene extends Phaser.Scene {
           tile.setInteractive({ useHandCursor: true });
           tile.gridX = col;
           tile.gridY = row;
-          
-          this.input.setDraggable(tile);
-          tile.on('drag', (pointer, dragX, dragY) => this.handleTileDrag(tile, dragX, dragY));
-          
+
+          tile.on('pointerdown', (pointer) => {
+            this.startX = pointer.x;
+            this.startY = pointer.y;
+            this.dragTile = tile;
+          });
+
           this.tiles[row][col] = tile;
         }
       }
