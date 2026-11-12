@@ -5,11 +5,11 @@ import bowImg from '../assets/tile-bow.png';
 import cubeBlueImg from '../assets/tile-cube-blue.png';
 import cubeRedImg from '../assets/tile-cube-red.png';
 import duckImg from '../assets/tile-duck.png';
-import scissorsImg from '../assets/tile-scissors.png';
-import paletteImg from '../assets/tile-palette.png';
 import pyramidImg from '../assets/tile-pyramid.png';
-import umbrellaImg from '../assets/tile-umbrella.png';
 import ballGreenImg from '../assets/tile-ball-green.png';
+import scissorsBonusImg from '../assets/tile-scissors.png';
+import umbrellaBonusImg from '../assets/tile-umbrella.png';
+import paletteBonusImg from '../assets/tile-palette.png';
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -17,47 +17,36 @@ export default class GameScene extends Phaser.Scene {
   }
 
   preload() {
-    // Загружаем фон и рамку поля
     this.load.image('bg-room', bgRoomImg);
     this.load.image('board-bg', boardBgImg);
 
-    // Загружаем фишки
     this.load.image('tile-bow', bowImg);
     this.load.image('tile-cube-blue', cubeBlueImg);
     this.load.image('tile-cube-red', cubeRedImg);
     this.load.image('tile-duck', duckImg);
-    this.load.image('tile-scissors', scissorsImg);
-    this.load.image('tile-palette', paletteImg);
     this.load.image('tile-pyramid', pyramidImg);
-    this.load.image('tile-umbrella', umbrellaImg);
     this.load.image('tile-ball-green', ballGreenImg);
+
+    // Бонусы
+    this.load.image('bonus-scissors', scissorsBonusImg);
+    this.load.image('bonus-umbrella', umbrellaBonusImg);
+    this.load.image('bonus-palette', paletteBonusImg);
   }
 
-    create() {
-    // 1. Фон комнаты (на весь экран 430x932)
+  create() {
     this.add.image(215, 466, 'bg-room').setDisplaySize(430, 932);
 
-    // 2. Ставим рамку поля (по центру)
     const boardBg = this.add.image(215, 466, 'board-bg').setDisplaySize(430, 430);
 
-    // 3. Настройки сетки (подгоняем под рамку)
     this.boardSize = 8;
-    // Размер ячейки = (размер рамки - отступы) / 8
-    // Рамка 430px, но у неё есть внутренние отступы (примерно 10px с каждой стороны)
-    // Поэтому берем 410 / 8 = 51.25
-    this.tileSize = 46; 
-    
-    // Отступы для первой ячейки (от левого верхнего угла рамки)
-    const padding = 20; 
-       // Вычисляем реальный центр рамки
+    this.tileSize = 46;
+
     const frameCenterX = boardBg.x;
     const frameCenterY = boardBg.y;
 
-    // Центрируем сетку относительно центра рамки
     this.offsetX = frameCenterX - (this.boardSize * this.tileSize) / 2;
     this.offsetY = frameCenterY - (this.boardSize * this.tileSize) / 2;
 
-    // 4. Массив доступных фишек
     this.tileTypes = [
       'tile-bow', 'tile-cube-blue', 'tile-cube-red',
       'tile-duck', 'tile-pyramid', 'tile-ball-green'
@@ -65,7 +54,6 @@ export default class GameScene extends Phaser.Scene {
 
     this.tiles = [];
 
-    // 5. Создаем сетку
     for (let row = 0; row < this.boardSize; row++) {
       this.tiles[row] = [];
       for (let col = 0; col < this.boardSize; col++) {
@@ -85,7 +73,6 @@ export default class GameScene extends Phaser.Scene {
       }
     }
 
-    // Кнопка "Назад"
     const backButton = this.add.text(20, 20, '← Назад', {
       fontSize: '18px',
       color: '#000',
@@ -98,14 +85,15 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
-  // Логика перетаскивания (Drag)
   handleTileDrag(tile, dragX, dragY) {
-    tile.x = dragX;
-    tile.y = dragY;
+    // Ограничиваем перетаскивание только одной клеткой в сторону
+    const centerX = this.offsetX + tile.gridX * this.tileSize + this.tileSize / 2;
+    const centerY = this.offsetY + tile.gridY * this.tileSize + this.tileSize / 2;
 
-    const dx = dragX - (this.offsetX + tile.gridX * this.tileSize + this.tileSize / 2);
-    const dy = dragY - (this.offsetY + tile.gridY * this.tileSize + this.tileSize / 2);
+    const dx = dragX - centerX;
+    const dy = dragY - centerY;
 
+    // Если сдвинули больше половины клетки — меняем местами
     if (Math.abs(dx) > this.tileSize / 2 || Math.abs(dy) > this.tileSize / 2) {
       let targetX = tile.gridX;
       let targetY = tile.gridY;
@@ -130,14 +118,15 @@ export default class GameScene extends Phaser.Scene {
           });
         }
       }
-
-      this.tweens.add({
-        targets: tile,
-        x: this.offsetX + tile.gridX * this.tileSize + this.tileSize / 2,
-        y: this.offsetY + tile.gridY * this.tileSize + this.tileSize / 2,
-        duration: 100,
-      });
     }
+
+    // Возвращаем фишку на место (в любом случае)
+    this.tweens.add({
+      targets: tile,
+      x: centerX,
+      y: centerY,
+      duration: 100,
+    });
   }
 
   swapTiles(tile1, tile2) {
@@ -168,6 +157,72 @@ export default class GameScene extends Phaser.Scene {
     this.time.delayedCall(200, () => this.checkMatches());
   }
 
+  createBonus(tile, type) {
+    const x = tile.x;
+    const y = tile.y;
+    const gridX = tile.gridX;
+    const gridY = tile.gridY;
+
+    tile.destroy();
+
+    const bonusImg = this.add.image(x, y, `bonus-${type}`)
+      .setDisplaySize(this.tileSize - 10, this.tileSize - 10);
+    
+    bonusImg.setInteractive({ useHandCursor: true });
+    bonusImg.gridX = gridX;
+    bonusImg.gridY = gridY;
+    bonusImg.setData('bonusType', type);
+
+    this.tiles[gridY][gridX] = bonusImg;
+
+    bonusImg.on('pointerdown', () => this.activateBonus(bonusImg));
+  }
+
+  activateBonus(bonusTile) {
+    const type = bonusTile.getData('bonusType');
+    const gridX = bonusTile.gridX;
+    const gridY = bonusTile.gridY;
+
+    bonusTile.destroy();
+    this.tiles[gridY][gridX] = null;
+
+    if (type === 'scissors') {
+      for (let col = 0; col < this.boardSize; col++) {
+        const tile = this.tiles[gridY][col];
+        if (tile) {
+          tile.destroy();
+          this.tiles[gridY][col] = null;
+        }
+      }
+    } else if (type === 'umbrella') {
+      for (let row = 0; row < this.boardSize; row++) {
+        const tile = this.tiles[row][gridX];
+        if (tile) {
+          tile.destroy();
+          this.tiles[row][gridX] = null;
+        }
+      }
+    } else if (type === 'palette') {
+      for (let r = gridY - 1; r <= gridY + 1; r++) {
+        for (let c = gridX - 1; c <= gridX + 1; c++) {
+          if (r >= 0 && r < this.boardSize && c >= 0 && c < this.boardSize) {
+            const tile = this.tiles[r][c];
+            if (tile) {
+              tile.destroy();
+              this.tiles[r][c] = null;
+            }
+          }
+        }
+      }
+    }
+
+    this.time.delayedCall(250, () => {
+      this.dropTiles();
+      this.refillBoard();
+      this.time.delayedCall(300, () => this.checkMatches());
+    });
+  }
+
   checkMatches() {
     const matches = new Set();
 
@@ -185,12 +240,10 @@ export default class GameScene extends Phaser.Scene {
             const startCol = col - count;
             if (count === 4) {
               const bonusTile = this.tiles[row][startCol + 1];
-              bonusTile.setData('bonus', 'rocket');
-              bonusTile.setTint(0x000000);
+              this.createBonus(bonusTile, 'scissors');
             } else if (count >= 5) {
               const bonusTile = this.tiles[row][startCol + 2];
-              bonusTile.setData('bonus', 'bomb');
-              bonusTile.setTint(0xffffff);
+              this.createBonus(bonusTile, 'palette');
             }
             for (let i = startCol; i < col; i++) {
               matches.add(this.tiles[row][i]);
@@ -203,12 +256,10 @@ export default class GameScene extends Phaser.Scene {
         const startCol = this.boardSize - count;
         if (count === 4) {
           const bonusTile = this.tiles[row][startCol + 1];
-          bonusTile.setData('bonus', 'rocket');
-          bonusTile.setTint(0x000000);
+          this.createBonus(bonusTile, 'scissors');
         } else if (count >= 5) {
           const bonusTile = this.tiles[row][startCol + 2];
-          bonusTile.setData('bonus', 'bomb');
-          bonusTile.setTint(0xffffff);
+          this.createBonus(bonusTile, 'palette');
         }
         for (let i = startCol; i < this.boardSize; i++) {
           matches.add(this.tiles[row][i]);
@@ -230,12 +281,10 @@ export default class GameScene extends Phaser.Scene {
             const startRow = row - count;
             if (count === 4) {
               const bonusTile = this.tiles[startRow + 1][col];
-              bonusTile.setData('bonus', 'rocket');
-              bonusTile.setTint(0x000000);
+              this.createBonus(bonusTile, 'umbrella');
             } else if (count >= 5) {
               const bonusTile = this.tiles[startRow + 2][col];
-              bonusTile.setData('bonus', 'bomb');
-              bonusTile.setTint(0xffffff);
+              this.createBonus(bonusTile, 'palette');
             }
             for (let i = startRow; i < row; i++) {
               matches.add(this.tiles[i][col]);
@@ -248,12 +297,10 @@ export default class GameScene extends Phaser.Scene {
         const startRow = this.boardSize - count;
         if (count === 4) {
           const bonusTile = this.tiles[startRow + 1][col];
-          bonusTile.setData('bonus', 'rocket');
-          bonusTile.setTint(0x000000);
+          this.createBonus(bonusTile, 'umbrella');
         } else if (count >= 5) {
           const bonusTile = this.tiles[startRow + 2][col];
-          bonusTile.setData('bonus', 'bomb');
-          bonusTile.setTint(0xffffff);
+          this.createBonus(bonusTile, 'palette');
         }
         for (let i = startRow; i < this.boardSize; i++) {
           matches.add(this.tiles[i][col]);
@@ -264,7 +311,7 @@ export default class GameScene extends Phaser.Scene {
     // Удаление
     if (matches.size > 0) {
       matches.forEach(tile => {
-        if (tile.getData('bonus')) return;
+        if (tile.getData('bonusType')) return;
         tile.destroy();
         this.tiles[tile.gridY][tile.gridX] = null;
       });
