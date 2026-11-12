@@ -1,5 +1,8 @@
 import Phaser from 'phaser';
 import alenkaImg from '../assets/alenka.png';
+import playBtnImg from '../assets/play-btn.png';
+import titleImg from '../assets/title.png';
+import bgRoomImg from '../assets/bg-room.png';
 
 export default class MainMenu extends Phaser.Scene {
   constructor() {
@@ -7,31 +10,27 @@ export default class MainMenu extends Phaser.Scene {
   }
 
   preload() {
+    // Загружаем все картинки
+    this.load.image('bg-room', bgRoomImg);
     this.load.image('alenka', alenkaImg);
+    this.load.image('play-btn', playBtnImg);
+    this.load.image('title', titleImg);
   }
 
   create() {
-    this.add.image(400, 250, 'alenka').setScale(0.5);
-    
-    this.add.text(400, 50, 'Алёнкины игрушки', {
-      fontSize: '48px',
-      fontFamily: 'Arial',
-      color: '#000000',
-      fontStyle: 'bold'
-    }).setOrigin(0.5);
+    // 1. Фон комнаты (на весь экран 430x932)
+    this.add.image(215, 466, 'bg-room').setDisplaySize(430, 932);
 
-    const playButton = this.add.rectangle(400, 500, 200, 60, 0x009379)
-      .setInteractive({ useHandCursor: true });
-    
-    this.add.text(400, 500, 'Играть', {
-      fontSize: '32px',
-      fontFamily: 'Arial',
-      color: '#ffffff',
-      fontStyle: 'bold'
-    }).setOrigin(0.5);
+    // 2. Заголовок (размер из Figma: 158x362, но ставим по центру сверху)
+    this.add.image(215, 150, 'title').setScale(0.9);
 
-    playButton.on('pointerdown', () => {
-      this.scene.start('GameScene');
-    });
+    // 3. Куколка (размер из Figma: 158x362)
+    this.add.image(280, 650, 'alenka').setScale(1.1);
+
+    // 4. Кнопка "Играть" (мяч с надписью)
+    // В Figma он был примерно 150x150, ставим такой же размер
+    const playBtn = this.add.image(130, 800, 'play-btn').setDisplaySize(150, 150);
+    playBtn.setInteractive({ useHandCursor: true });
+    playBtn.on('pointerdown', () => this.scene.start('GameScene'));
   }
 }

@@ -9,8 +9,8 @@ function PhaserGame() {
   useEffect(() => {
     const config = {
       type: Phaser.AUTO,
-      width: 800,
-      height: 600,
+      width: 430,
+      height: 932,
       parent: gameRef.current,
       backgroundColor: '#e0f7fa',
       scene: [MainMenu, GameScene],
