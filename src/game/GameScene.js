@@ -11,6 +11,9 @@ import scissorsBonusImg from '../assets/tile-scissors.png';
 import umbrellaBonusImg from '../assets/tile-umbrella.png';
 import paletteBonusImg from '../assets/tile-palette.png';
 
+import Board from './board/Board';
+import HUD from './hud/HUD';
+
 export default class GameScene extends Phaser.Scene {
   constructor() {
     super({ key: 'GameScene' });
@@ -27,448 +30,68 @@ export default class GameScene extends Phaser.Scene {
     this.load.image('tile-pyramid', pyramidImg);
     this.load.image('tile-ball-green', ballGreenImg);
 
-    // Бонусы
     this.load.image('bonus-scissors', scissorsBonusImg);
     this.load.image('bonus-umbrella', umbrellaBonusImg);
     this.load.image('bonus-palette', paletteBonusImg);
   }
 
   create() {
+    this.isGameOver = false;
     this.add.image(215, 466, 'bg-room').setDisplaySize(430, 932);
-    this.collectedDucks = 0; // Сколько уточек уже собрано
-    this.isGameOver = false; // Остановка игры при победе
-
-    // Переменные для счета
-    this.score = 0;
-    this.moves = 20; // Начальное количество ходов
-    this.targetType = 'tile-duck'; // Цель — собрать уточек
-    this.targetCount = 10; // Нужно собрать 10 уточек
 
     const boardBg = this.add.image(215, 466, 'board-bg').setDisplaySize(430, 430);
 
-    this.boardSize = 8;
-    this.tileSize = 46;
+    const boardSize = 8;
+    const tileSize = 46;
+    const offsetX = boardBg.x - (boardSize * tileSize) / 2;
+    const offsetY = boardBg.y - (boardSize * tileSize) / 2;
 
-    const frameCenterX = boardBg.x;
-    const frameCenterY = boardBg.y;
-
-    this.offsetX = frameCenterX - (this.boardSize * this.tileSize) / 2;
-    this.offsetY = frameCenterY - (this.boardSize * this.tileSize) / 2;
-
-    this.tileTypes = [
+    const tileTypes = [
       'tile-bow', 'tile-cube-blue', 'tile-cube-red',
       'tile-duck', 'tile-pyramid', 'tile-ball-green'
     ];
 
-    this.tiles = [];
+    // Создаем HUD и Board
+    this.hud = new HUD(this);
+    this.hud.create();
 
-    for (let row = 0; row < this.boardSize; row++) {
-      this.tiles[row] = [];
-      for (let col = 0; col < this.boardSize; col++) {
-        const x = this.offsetX + col * this.tileSize + this.tileSize / 2;
-        const y = this.offsetY + row * this.tileSize + this.tileSize / 2;
+    this.board = new Board(this, offsetX, offsetY, tileSize, boardSize, tileTypes);
+    this.board.setHUD(this.hud);
+    this.board.create();
 
-        const type = this.tileTypes[Math.floor(Math.random() * this.tileTypes.length)];
+    // Обработчик свайпа (перенесен из GameScene)
+    this.input.on('pointerup', (pointer) => {
+      if (!this.dragTile) return;
 
-        const tile = this.add.image(x, y, type).setDisplaySize(this.tileSize - 8, this.tileSize - 8);
-        tile.setInteractive({ useHandCursor: true });
-        tile.gridX = col;
-        tile.gridY = row;
+      const dx = pointer.x - this.startX;
+      const dy = pointer.y - this.startY;
 
-        tile.on('pointerdown', (pointer) => {
-          // Запоминаем, где нажали
-          this.startX = pointer.x;
-          this.startY = pointer.y;
-          this.dragTile = tile; // Запоминаем, какую фишку тащим
-        });
-        this.tiles[row][col] = tile;
-        // Обработчик отпускания пальца
-        this.input.on('pointerup', (pointer) => {
-          if (!this.dragTile) return;
+      if (Math.abs(dx) > 20 || Math.abs(dy) > 20) {
+        let targetX = this.dragTile.gridX;
+        let targetY = this.dragTile.gridY;
 
-          const dx = pointer.x - this.startX;
-          const dy = pointer.y - this.startY;
-
-          // Если сдвинули больше 20 пикселей
-          if (Math.abs(dx) > 20 || Math.abs(dy) > 20) {
-            let targetX = this.dragTile.gridX;
-            let targetY = this.dragTile.gridY;
-
-            if (Math.abs(dx) > Math.abs(dy)) {
-              targetX += dx > 0 ? 1 : -1;
-            } else {
-              targetY += dy > 0 ? 1 : -1;
-            }
-
-            if (targetX >= 0 && targetX < this.boardSize && targetY >= 0 && targetY < this.boardSize) {
-              const targetTile = this.tiles[targetY][targetX];
-              if (targetTile) {
-                this.swapTiles(this.dragTile, targetTile);
-              }
-            }
-          }
-
-          this.dragTile = null;
-        });
-      }
-    }
-
-    const backButton = this.add.text(20, 20, '← Назад', {
-      fontSize: '18px',
-      color: '#000',
-      backgroundColor: '#fff',
-      padding: { x: 8, y: 4 }
-    }).setInteractive({ useHandCursor: true });
-
-    backButton.on('pointerdown', () => {
-      this.scene.start('MainMenu');
-    });
-    // --- HUD (Счетчики) ---
-    this.add.text(20, 60, 'Очки: 0', {
-      fontSize: '24px',
-      fontFamily: 'Arial',
-      color: '#000',
-      backgroundColor: '#fff',
-      padding: { x: 10, y: 5 }
-    }).setName('scoreText');
-
-    this.add.text(20, 100, 'Ходы: 20', {
-      fontSize: '24px',
-      fontFamily: 'Arial',
-      color: '#000',
-      backgroundColor: '#fff',
-      padding: { x: 10, y: 5 }
-    }).setName('movesText');
-
-    this.add.text(20, 140, 'Цель: 0/10 уточек', {
-      fontSize: '24px',
-      fontFamily: 'Arial',
-      color: '#000',
-      backgroundColor: '#fff',
-      padding: { x: 10, y: 5 }
-    }).setName('targetText');
-  }
-
-  handleTileDrag(tile, dragX, dragY) {
-    // Вычисляем центр клетки
-    const centerX = this.offsetX + tile.gridX * this.tileSize + this.tileSize / 2;
-    const centerY = this.offsetY + tile.gridY * this.tileSize + this.tileSize / 2;
-
-    const dx = dragX - centerX;
-    const dy = dragY - centerY;
-
-    // Ограничиваем движение
-    const maxOffset = this.tileSize / 2;
-    const clampedX = centerX + Math.max(-maxOffset, Math.min(maxOffset, dx));
-    const clampedY = centerY + Math.max(-maxOffset, Math.min(maxOffset, dy));
-
-    tile.x = clampedX;
-    tile.y = clampedY;
-
-    // Если сдвинули больше половины — меняем местами
-    if (Math.abs(dx) > this.tileSize / 2 || Math.abs(dy) > this.tileSize / 2) {
-      let targetX = tile.gridX;
-      let targetY = tile.gridY;
-
-      if (Math.abs(dx) > Math.abs(dy)) {
-        targetX += dx > 0 ? 1 : -1;
-      } else {
-        targetY += dy > 0 ? 1 : -1;
-      }
-
-      if (targetX >= 0 && targetX < this.boardSize && targetY >= 0 && targetY < this.boardSize) {
-        const targetTile = this.tiles[targetY][targetX];
-        if (targetTile) {
-          this.input.setDraggable(tile, false);
-          this.input.setDraggable(targetTile, false);
-          this.swapTiles(tile, targetTile);
-           this.time.delayedCall(200, () => {
-            if (tile && tile.active) this.input.setDraggable(tile, true);
-            if (targetTile && targetTile.active) this.input.setDraggable(targetTile, true);
-          });
-        }
-      }
-    }
-  }
-
-  swapTiles(tile1, tile2) {
-    // 1. Меняем местами в массиве
-    const tempX = tile1.gridX;
-    const tempY = tile1.gridY;
-    tile1.gridX = tile2.gridX;
-    tile1.gridY = tile2.gridY;
-    tile2.gridX = tempX;
-    tile2.gridY = tempY;
-
-    this.tiles[tile1.gridY][tile1.gridX] = tile1;
-    this.tiles[tile2.gridY][tile2.gridX] = tile2;
-
-    // 2. Анимация обмена
-    this.tweens.add({
-      targets: tile1,
-      x: this.offsetX + tile1.gridX * this.tileSize + this.tileSize / 2,
-      y: this.offsetY + tile1.gridY * this.tileSize + this.tileSize / 2,
-      duration: 200,
-    });
-
-    this.tweens.add({
-      targets: tile2,
-      x: this.offsetX + tile2.gridX * this.tileSize + this.tileSize / 2,
-      y: this.offsetY + tile2.gridY * this.tileSize + this.tileSize / 2,
-      duration: 200,
-    });
-
-    // 3. Проверяем, есть ли совпадения ПОСЛЕ обмена
-    this.time.delayedCall(200, () => {
-      const hasMatches = this.checkMatches(); // <--- ВОТ ЗДЕСЬ МЫ ЛОВИМ РЕЗУЛЬТАТ
-
-      if (!hasMatches) {
-        // Если совпадений нет — откатываем обмен
-        this.tiles[tile1.gridY][tile1.gridX] = tile2;
-        this.tiles[tile2.gridY][tile2.gridX] = tile1;
-
-        const tempX2 = tile1.gridX;
-        const tempY2 = tile1.gridY;
-        tile1.gridX = tile2.gridX;
-        tile1.gridY = tile2.gridY;
-        tile2.gridX = tempX2;
-        tile2.gridY = tempY2;
-
-        // Анимация возврата
-        this.tweens.add({
-          targets: tile1,
-          x: this.offsetX + tile1.gridX * this.tileSize + this.tileSize / 2,
-          y: this.offsetY + tile1.gridY * this.tileSize + this.tileSize / 2,
-          duration: 200,
-        });
-
-        this.tweens.add({
-          targets: tile2,
-          x: this.offsetX + tile2.gridX * this.tileSize + this.tileSize / 2,
-          y: this.offsetY + tile2.gridY * this.tileSize + this.tileSize / 2,
-          duration: 200,
-        });
-      } else {
-        // 👇 УМЕНЬШАЕМ ХОДЫ ТОЛЬКО ПРИ УСПЕШНОМ ОБМЕНЕ
-        this.moves--;
-        this.children.getByName('movesText').setText('Ходы: ' + this.moves);
-      }
-    });
-  }
-
-  createBonus(tile, type) {
-    const x = tile.x;
-    const y = tile.y;
-    const gridX = tile.gridX;
-    const gridY = tile.gridY;
-
-    tile.destroy();
-
-    const bonusImg = this.add.image(x, y, `bonus-${type}`)
-      .setDisplaySize(this.tileSize - 10, this.tileSize - 10);
-
-    bonusImg.setInteractive({ useHandCursor: true });
-    bonusImg.gridX = gridX;
-    bonusImg.gridY = gridY;
-    bonusImg.setData('bonusType', type);
-
-    this.tiles[gridY][gridX] = bonusImg;
-
-    bonusImg.on('pointerdown', () => this.activateBonus(bonusImg));
-  }
-
-  activateBonus(bonusTile) {
-    const type = bonusTile.getData('bonusType');
-    const gridX = bonusTile.gridX;
-    const gridY = bonusTile.gridY;
-
-    bonusTile.destroy();
-    this.tiles[gridY][gridX] = null;
-
-    if (type === 'scissors') {
-      for (let col = 0; col < this.boardSize; col++) {
-        const tile = this.tiles[gridY][col];
-        if (tile) {
-          tile.destroy();
-          this.tiles[gridY][col] = null;
-        }
-      }
-    } else if (type === 'umbrella') {
-      for (let row = 0; row < this.boardSize; row++) {
-        const tile = this.tiles[row][gridX];
-        if (tile) {
-          tile.destroy();
-          this.tiles[row][gridX] = null;
-        }
-      }
-    } else if (type === 'palette') {
-      for (let r = gridY - 1; r <= gridY + 1; r++) {
-        for (let c = gridX - 1; c <= gridX + 1; c++) {
-          if (r >= 0 && r < this.boardSize && c >= 0 && c < this.boardSize) {
-            const tile = this.tiles[r][c];
-            if (tile) {
-              tile.destroy();
-              this.tiles[r][c] = null;
-            }
-          }
-        }
-      }
-    }
-
-    this.time.delayedCall(250, () => {
-      this.dropTiles();
-      this.refillBoard();
-      this.time.delayedCall(300, () => this.checkMatches());
-    });
-  }
-
-  checkMatches() {
-    const matches = new Set();
-    if (this.isGameOver) return false;
-
-    // Горизонтальные
-    for (let row = 0; row < this.boardSize; row++) {
-      let count = 1;
-      for (let col = 1; col < this.boardSize; col++) {
-        const prevTile = this.tiles[row][col - 1];
-        const currTile = this.tiles[row][col];
-
-        if (prevTile && currTile && prevTile.texture.key === currTile.texture.key) {
-          count++;
+        if (Math.abs(dx) > Math.abs(dy)) {
+          targetX += dx > 0 ? 1 : -1;
         } else {
-          if (count >= 3) {
-            const startCol = col - count;
-            if (count === 4) {
-              const bonusTile = this.tiles[row][startCol + 1];
-              this.createBonus(bonusTile, 'scissors');
-            } else if (count >= 5) {
-              const bonusTile = this.tiles[row][startCol + 2];
-              this.createBonus(bonusTile, 'palette');
-            }
-            for (let i = startCol; i < col; i++) {
-              matches.add(this.tiles[row][i]);
-            }
+          targetY += dy > 0 ? 1 : -1;
+        }
+
+        if (targetX >= 0 && targetX < boardSize && targetY >= 0 && targetY < boardSize) {
+          const targetTile = this.board.tiles[targetY][targetX];
+          if (targetTile) {
+            this.board.swapTiles(this.dragTile, targetTile);
           }
-          count = 1;
         }
       }
-      if (count >= 3) {
-        const startCol = this.boardSize - count;
-        if (count === 4) {
-          const bonusTile = this.tiles[row][startCol + 1];
-          this.createBonus(bonusTile, 'scissors');
-        } else if (count >= 5) {
-          const bonusTile = this.tiles[row][startCol + 2];
-          this.createBonus(bonusTile, 'palette');
-        }
-        for (let i = startCol; i < this.boardSize; i++) {
-          matches.add(this.tiles[row][i]);
-        }
-      }
-    }
 
-    // Вертикальные
-    for (let col = 0; col < this.boardSize; col++) {
-      let count = 1;
-      for (let row = 1; row < this.boardSize; row++) {
-        const prevTile = this.tiles[row - 1][col];
-        const currTile = this.tiles[row][col];
-
-        if (prevTile && currTile && prevTile.texture.key === currTile.texture.key) {
-          count++;
-        } else {
-          if (count >= 3) {
-            const startRow = row - count;
-            if (count === 4) {
-              const bonusTile = this.tiles[startRow + 1][col];
-              this.createBonus(bonusTile, 'umbrella');
-            } else if (count >= 5) {
-              const bonusTile = this.tiles[startRow + 2][col];
-              this.createBonus(bonusTile, 'palette');
-            }
-            for (let i = startRow; i < row; i++) {
-              matches.add(this.tiles[i][col]);
-            }
-          }
-          count = 1;
-        }
-      }
-      if (count >= 3) {
-        const startRow = this.boardSize - count;
-        if (count === 4) {
-          const bonusTile = this.tiles[startRow + 1][col];
-          this.createBonus(bonusTile, 'umbrella');
-        } else if (count >= 5) {
-          const bonusTile = this.tiles[startRow + 2][col];
-          this.createBonus(bonusTile, 'palette');
-        }
-        for (let i = startRow; i < this.boardSize; i++) {
-          matches.add(this.tiles[i][col]);
-        }
-      }
-    }
-
-    // Удаление
-    if (matches.size > 0) {
-      // Начисляем очки за каждую удаленную фишку
-      this.score += matches.size * 10; // 10 очков за фишку
-
-      // Проверяем, сколько фишек нужного типа собрано (для цели)
-      let collectedTarget = 0;
-      matches.forEach(tile => {
-        if (tile.texture.key === this.targetType) {
-          collectedTarget++;
-        }
-      });
-
-      // 👇 УВЕЛИЧИВАЕМ ОБЩИЙ СЧЕТЧИК УТОЧЕК
-      this.collectedDucks += collectedTarget;
-
-      // Обновляем текст на экране
-      this.children.getByName('scoreText').setText('Очки: ' + this.score);
-      
-      // 👇 ВЫВОДИМ ОБЩЕЕ КОЛИЧЕСТВО СОБРАННЫХ УТОЧЕК
-      this.children.getByName('targetText').setText(`Цель: ${this.collectedDucks} / 10 уточек`);
-        
-      // Удаляем фишки
-      matches.forEach(tile => {
-        if (tile.getData('bonusType')) return;
-        tile.destroy();
-        this.tiles[tile.gridY][tile.gridX] = null;
-      });
-
-       // Запускаем гравитацию и рефилл
-      this.time.delayedCall(250, () => {
-        this.dropTiles();
-        this.refillBoard();
-        this.time.delayedCall(300, () => this.checkMatches());
-      });
-
-      // 👇 ПРОВЕРКА НА ПОБЕДУ/ПОРАЖЕНИЕ
-      if (this.collectedDucks >=10) { // Проверяем собранных уточек
-
-        // ПОБЕДА
-        this.showEndScreen('ПОБЕДА!', 'Вы собрали всех уточек!');
-        return true;
-      } else if (this.moves <= 0) {
-        // ПОРАЖЕНИЕ
-        this.showEndScreen('ПОРАЖЕНИЕ', 'У вас закончились ходы!');
-        return true;
-      }
-
-      return true;
-    }
-
-    return false; 
+      this.dragTile = null;
+    });
   }
 
-       showEndScreen(title, message) {
-      this.isGameOver = true; // Остановка игры при победе
-    
-    // Затемняем фон (самый высокий слой)
+  showEndScreen(title, message) {
+    this.isGameOver = true;
     this.add.rectangle(215, 466, 430, 932, 0x000000, 0.7).setDepth(999);
 
-    // Заголовок
     this.add.text(215, 350, title, {
       fontSize: '48px',
       fontFamily: 'Arial',
@@ -476,7 +99,6 @@ export default class GameScene extends Phaser.Scene {
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(1000);
 
-    // Сообщение
     this.add.text(215, 450, message, {
       fontSize: '24px',
       fontFamily: 'Arial',
@@ -485,7 +107,6 @@ export default class GameScene extends Phaser.Scene {
       wordWrap: { width: 350 }
     }).setOrigin(0.5).setDepth(1000);
 
-    // Кнопка "Играть снова"
     const restartBtn = this.add.text(215, 600, 'Играть снова', {
       fontSize: '32px',
       color: '#fff',
@@ -494,57 +115,8 @@ export default class GameScene extends Phaser.Scene {
     }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(1000);
 
     restartBtn.on('pointerdown', () => {
-      this.collectedDucks = 0; // Сбрасываем счетчик
       this.isGameOver = false;
-      this.scene.restart(); // Перезапускаем сцену
+      this.scene.restart();
     });
-  } 
-
-  dropTiles() {
-    for (let col = 0; col < this.boardSize; col++) {
-      for (let row = this.boardSize - 1; row >= 0; row--) {
-        if (this.tiles[row][col] === null) {
-          for (let r = row - 1; r >= 0; r--) {
-            if (this.tiles[r][col] !== null) {
-              const tileToMove = this.tiles[r][col];
-              this.tiles[row][col] = tileToMove;
-              this.tiles[r][col] = null;
-              tileToMove.gridY = row;
-              this.tweens.add({
-                targets: tileToMove,
-                y: this.offsetY + row * this.tileSize + this.tileSize / 2,
-                duration: 200,
-              });
-              break;
-            }
-          }
-        }
-      }
-    }
-  }
-
-  refillBoard() {
-    for (let col = 0; col < this.boardSize; col++) {
-      for (let row = 0; row < this.boardSize; row++) {
-        if (this.tiles[row][col] === null) {
-          const x = this.offsetX + col * this.tileSize + this.tileSize / 2;
-          const y = this.offsetY + row * this.tileSize + this.tileSize / 2;
-          const type = this.tileTypes[Math.floor(Math.random() * this.tileTypes.length)];
-
-          const tile = this.add.image(x, y, type).setDisplaySize(this.tileSize - 8, this.tileSize - 8);
-          tile.setInteractive({ useHandCursor: true });
-          tile.gridX = col;
-          tile.gridY = row;
-
-          tile.on('pointerdown', (pointer) => {
-            this.startX = pointer.x;
-            this.startY = pointer.y;
-            this.dragTile = tile;
-          });
-
-          this.tiles[row][col] = tile;
-        }
-      }
-    }
   }
 }
