@@ -25,12 +25,16 @@ export default class MainMenu extends Phaser.Scene {
     this.add.image(215, 150, 'title').setScale(0.9);
 
     // 3. Куколка (размер из Figma: 158x362)
-    this.add.image(280, 650, 'alenka').setScale(1.1);
+    const alenka = this.add.image(280, 650, 'alenka').setScale(1.1);
+    alenka.setTexture('alenka'); // Убедимся, что текстура применилась
+    // Включаем "пиксельный" фильтр, чтобы не было размытия
+    alenka.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
 
     // 4. Кнопка "Играть" (мяч с надписью)
     // В Figma он был примерно 150x150, ставим такой же размер
-    const playBtn = this.add.image(130, 800, 'play-btn').setDisplaySize(150, 150);
+    const playBtn = this.add.image(130, 650, 'play-btn').setDisplaySize(150, 240);
     playBtn.setInteractive({ useHandCursor: true });
     playBtn.on('pointerdown', () => this.scene.start('GameScene'));
+    playBtn.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
   }
 }
