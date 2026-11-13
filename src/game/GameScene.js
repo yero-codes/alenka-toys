@@ -35,6 +35,14 @@ export default class GameScene extends Phaser.Scene {
 
   create() {
     this.add.image(215, 466, 'bg-room').setDisplaySize(430, 932);
+    this.collectedDucks = 0; // Сколько уточек уже собрано
+    this.isGameOver = false; // Остановка игры при победе
+
+    // Переменные для счета
+    this.score = 0;
+    this.moves = 20; // Начальное количество ходов
+    this.targetType = 'tile-duck'; // Цель — собрать уточек
+    this.targetCount = 10; // Нужно собрать 10 уточек
 
     const boardBg = this.add.image(215, 466, 'board-bg').setDisplaySize(430, 430);
 
@@ -115,6 +123,30 @@ export default class GameScene extends Phaser.Scene {
     backButton.on('pointerdown', () => {
       this.scene.start('MainMenu');
     });
+    // --- HUD (Счетчики) ---
+    this.add.text(20, 60, 'Очки: 0', {
+      fontSize: '24px',
+      fontFamily: 'Arial',
+      color: '#000',
+      backgroundColor: '#fff',
+      padding: { x: 10, y: 5 }
+    }).setName('scoreText');
+
+    this.add.text(20, 100, 'Ходы: 20', {
+      fontSize: '24px',
+      fontFamily: 'Arial',
+      color: '#000',
+      backgroundColor: '#fff',
+      padding: { x: 10, y: 5 }
+    }).setName('movesText');
+
+    this.add.text(20, 140, 'Цель: 0/10 уточек', {
+      fontSize: '24px',
+      fontFamily: 'Arial',
+      color: '#000',
+      backgroundColor: '#fff',
+      padding: { x: 10, y: 5 }
+    }).setName('targetText');
   }
 
   handleTileDrag(tile, dragX, dragY) {
@@ -149,10 +181,8 @@ export default class GameScene extends Phaser.Scene {
         if (targetTile) {
           this.input.setDraggable(tile, false);
           this.input.setDraggable(targetTile, false);
-
           this.swapTiles(tile, targetTile);
-
-          this.time.delayedCall(200, () => {
+           this.time.delayedCall(200, () => {
             if (tile && tile.active) this.input.setDraggable(tile, true);
             if (targetTile && targetTile.active) this.input.setDraggable(targetTile, true);
           });
@@ -218,6 +248,10 @@ export default class GameScene extends Phaser.Scene {
           y: this.offsetY + tile2.gridY * this.tileSize + this.tileSize / 2,
           duration: 200,
         });
+      } else {
+        // 👇 УМЕНЬШАЕМ ХОДЫ ТОЛЬКО ПРИ УСПЕШНОМ ОБМЕНЕ
+        this.moves--;
+        this.children.getByName('movesText').setText('Ходы: ' + this.moves);
       }
     });
   }
@@ -290,6 +324,7 @@ export default class GameScene extends Phaser.Scene {
 
   checkMatches() {
     const matches = new Set();
+    if (this.isGameOver) return false;
 
     // Горизонтальные
     for (let row = 0; row < this.boardSize; row++) {
@@ -375,23 +410,95 @@ export default class GameScene extends Phaser.Scene {
 
     // Удаление
     if (matches.size > 0) {
+      // Начисляем очки за каждую удаленную фишку
+      this.score += matches.size * 10; // 10 очков за фишку
+
+      // Проверяем, сколько фишек нужного типа собрано (для цели)
+      let collectedTarget = 0;
+      matches.forEach(tile => {
+        if (tile.texture.key === this.targetType) {
+          collectedTarget++;
+        }
+      });
+
+      // 👇 УВЕЛИЧИВАЕМ ОБЩИЙ СЧЕТЧИК УТОЧЕК
+      this.collectedDucks += collectedTarget;
+
+      // Обновляем текст на экране
+      this.children.getByName('scoreText').setText('Очки: ' + this.score);
+      
+      // 👇 ВЫВОДИМ ОБЩЕЕ КОЛИЧЕСТВО СОБРАННЫХ УТОЧЕК
+      this.children.getByName('targetText').setText(`Цель: ${this.collectedDucks} / 10 уточек`);
+        
+      // Удаляем фишки
       matches.forEach(tile => {
         if (tile.getData('bonusType')) return;
         tile.destroy();
         this.tiles[tile.gridY][tile.gridX] = null;
       });
 
+       // Запускаем гравитацию и рефилл
       this.time.delayedCall(250, () => {
         this.dropTiles();
         this.refillBoard();
         this.time.delayedCall(300, () => this.checkMatches());
       });
 
+      // 👇 ПРОВЕРКА НА ПОБЕДУ/ПОРАЖЕНИЕ
+      if (this.collectedDucks >=10) { // Проверяем собранных уточек
+
+        // ПОБЕДА
+        this.showEndScreen('ПОБЕДА!', 'Вы собрали всех уточек!');
+        return true;
+      } else if (this.moves <= 0) {
+        // ПОРАЖЕНИЕ
+        this.showEndScreen('ПОРАЖЕНИЕ', 'У вас закончились ходы!');
+        return true;
+      }
+
       return true;
     }
 
-    return false;
+    return false; 
   }
+
+       showEndScreen(title, message) {
+      this.isGameOver = true; // Остановка игры при победе
+    
+    // Затемняем фон (самый высокий слой)
+    this.add.rectangle(215, 466, 430, 932, 0x000000, 0.7).setDepth(999);
+
+    // Заголовок
+    this.add.text(215, 350, title, {
+      fontSize: '48px',
+      fontFamily: 'Arial',
+      color: title === 'ПОБЕДА!' ? '#00ff00' : '#ff0000',
+      fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(1000);
+
+    // Сообщение
+    this.add.text(215, 450, message, {
+      fontSize: '24px',
+      fontFamily: 'Arial',
+      color: '#ffffff',
+      align: 'center',
+      wordWrap: { width: 350 }
+    }).setOrigin(0.5).setDepth(1000);
+
+    // Кнопка "Играть снова"
+    const restartBtn = this.add.text(215, 600, 'Играть снова', {
+      fontSize: '32px',
+      color: '#fff',
+      backgroundColor: '#009379',
+      padding: { x: 20, y: 10 }
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(1000);
+
+    restartBtn.on('pointerdown', () => {
+      this.collectedDucks = 0; // Сбрасываем счетчик
+      this.isGameOver = false;
+      this.scene.restart(); // Перезапускаем сцену
+    });
+  } 
 
   dropTiles() {
     for (let col = 0; col < this.boardSize; col++) {
