@@ -10,9 +10,11 @@ import ballGreenImg from '../assets/tile-ball-green.png';
 import scissorsBonusImg from '../assets/tile-scissors.png';
 import umbrellaBonusImg from '../assets/tile-umbrella.png';
 import paletteBonusImg from '../assets/tile-palette.png';
-
+import btnBackImg from '../assets/btn-back.png';
+import hudBgImg from '../assets/hud-bg.png';
 import Board from './board/Board';
 import HUD from './hud/HUD';
+import levelBgImg from '../assets/level-bg.png';
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -33,9 +35,14 @@ export default class GameScene extends Phaser.Scene {
     this.load.image('bonus-scissors', scissorsBonusImg);
     this.load.image('bonus-umbrella', umbrellaBonusImg);
     this.load.image('bonus-palette', paletteBonusImg);
+
+    this.load.image('btn-back', btnBackImg);
+    this.load.image('hud-bg', hudBgImg);
+    this.load.image('level-bg', levelBgImg);
   }
 
   create() {
+    this.currentLevel = parseInt(localStorage.getItem('currentLevel')) || 1;
     this.isGameOver = false;
     this.add.image(215, 466, 'bg-room').setDisplaySize(430, 932);
 
@@ -58,6 +65,8 @@ export default class GameScene extends Phaser.Scene {
     this.board = new Board(this, offsetX, offsetY, tileSize, boardSize, tileTypes);
     this.board.setHUD(this.hud);
     this.board.create();
+
+    this.hud.updateLevel(this.currentLevel); // 👈 Обновляем текст уровня при старте
 
     // Обработчик свайпа (перенесен из GameScene)
     this.input.on('pointerup', (pointer) => {
@@ -116,6 +125,9 @@ export default class GameScene extends Phaser.Scene {
 
     restartBtn.on('pointerdown', () => {
       this.isGameOver = false;
+      this.currentLevel++; // 👈 Увеличиваем уровень
+      localStorage.setItem('currentLevel', this.currentLevel); // 👈 Сохраняем в localStorage
+      this.hud.updateLevel(this.currentLevel); // 👈 Обновляем текст (на всякий случай)
       this.scene.restart();
     });
   }
