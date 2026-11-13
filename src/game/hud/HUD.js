@@ -1,9 +1,6 @@
 import Phaser from 'phaser';
 
 export default class HUD {
-  updateLevel(level) {
-  this.levelValue.setText(level.toString());
-}
   constructor(scene) {
     this.scene = scene;
     this.score = 0;
@@ -13,7 +10,7 @@ export default class HUD {
   }
 
   create() {
-    // 1. Кнопка "Назад" (картинка)
+    // 1. Кнопка "Назад"
     const backButton = this.scene.add.image(50, 50, 'btn-back')
       .setDisplaySize(60, 60)
       .setInteractive({ useHandCursor: true });
@@ -22,11 +19,11 @@ export default class HUD {
       this.scene.scene.start('MainMenu');
     });
 
-    // 2. Панель целей (картинка)
+    // 2. Панель целей
     const hudBg = this.scene.add.image(215, 120, 'hud-bg')
       .setDisplaySize(320, 160);
 
-    // 3. Текст поверх панели (Очки, Ходы, Цель)
+    // 3. Текст (Очки, Ходы, Цель)
     this.scoreText = this.scene.add.text(215, 80, 'Очки: 0', {
       fontSize: '20px',
       fontFamily: 'Arial',
@@ -48,11 +45,10 @@ export default class HUD {
       fontStyle: 'bold'
     }).setOrigin(0.5);
 
-    // 4. Плашка УРОВНЯ (картинка)
+    // 4. Плашка УРОВНЯ
     const levelBg = this.scene.add.image(215, 225, 'level-bg')
       .setDisplaySize(240, 60);
 
-    // 5. Текст "Уровень:" (темно-синий с голубой обводкой)
     this.levelText = this.scene.add.text(190, 225, 'Уровень:', {
       fontSize: '22px',
       fontFamily: 'Arial',
@@ -62,7 +58,6 @@ export default class HUD {
       strokeThickness: 4
     }).setOrigin(0.5);
 
-    // 6. Значение уровня (темно-бордовый с нежно-фиолетовой обводкой)
     this.levelValue = this.scene.add.text(260, 225, '1', {
       fontSize: '22px',
       fontFamily: 'Arial',
@@ -73,25 +68,21 @@ export default class HUD {
     }).setOrigin(0.5);
   }
 
-  // Обновление очков
   updateScore(score) {
     this.score = score;
     this.scoreText.setText('Очки: ' + this.score);
   }
 
-  // Обновление ходов
   updateMoves(moves) {
     this.moves = moves;
     this.movesText.setText('Ходы: ' + this.moves);
   }
 
-  // Обновление цели
   updateTarget(collected) {
     this.collectedDucks = collected;
     this.targetText.setText(`Цель: ${this.collectedDucks} / 10 уточек`);
   }
 
-  // Обновление уровня (для будущего)
   updateLevel(level) {
     this.levelValue.setText(level.toString());
   }

@@ -15,6 +15,7 @@ import hudBgImg from '../assets/hud-bg.png';
 import Board from './board/Board';
 import HUD from './hud/HUD';
 import levelBgImg from '../assets/level-bg.png';
+import iconHeartImg from '../assets/icon-heart.png';
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -24,7 +25,7 @@ export default class GameScene extends Phaser.Scene {
   preload() {
     this.load.image('bg-room', bgRoomImg);
     this.load.image('board-bg', boardBgImg);
-
+    this.load.image('icon-heart', iconHeartImg);
     this.load.image('tile-bow', bowImg);
     this.load.image('tile-cube-blue', cubeBlueImg);
     this.load.image('tile-cube-red', cubeRedImg);
@@ -60,13 +61,14 @@ export default class GameScene extends Phaser.Scene {
 
     // Создаем HUD и Board
     this.hud = new HUD(this);
+    
     this.hud.create();
-
+    this.hud.updateLevel(this.currentLevel);
     this.board = new Board(this, offsetX, offsetY, tileSize, boardSize, tileTypes);
     this.board.setHUD(this.hud);
     this.board.create();
 
-    this.hud.updateLevel(this.currentLevel); // 👈 Обновляем текст уровня при старте
+    
 
     // Обработчик свайпа (перенесен из GameScene)
     this.input.on('pointerup', (pointer) => {
@@ -99,6 +101,21 @@ export default class GameScene extends Phaser.Scene {
 
   showEndScreen(title, message) {
     this.isGameOver = true;
+    // 👇 ЕСЛИ ЭТО ПОРАЖЕНИЕ, ОТНИМАЕМ ЖИЗНЬ
+    if (title === 'ПОРАЖЕНИЕ') {
+      let currentLives = parseInt(localStorage.getItem('lives')) || 5;
+      currentLives = Math.max(0, currentLives - 1); // Не уходим в минус
+      localStorage.setItem('lives', currentLives);
+      
+      if (this.hud) {
+        this.hud.updateLives(currentLives);
+      }
+      
+      if (currentLives === 0) {
+        // TODO: Здесь будет блокировка игры и таймер
+        message = 'Жизни закончились! Ждите восстановления.';
+      }
+  }
     this.add.rectangle(215, 466, 430, 932, 0x000000, 0.7).setDepth(999);
 
     this.add.text(215, 350, title, {
