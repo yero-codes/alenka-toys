@@ -22,7 +22,7 @@ export default class Board {
       for (let col = 0; col < this.boardSize; col++) {
         const tileX = this.x + col * this.tileSize + this.tileSize / 2;
         const tileY = this.y + row * this.tileSize + this.tileSize / 2;
-        const type = this.tileTypes[Math.floor(Math.random() * this.tileTypes.length)];
+        const type = this.getSafeTileType(col, row);
 
         const tile = this.scene.add.image(tileX, tileY, type).setDisplaySize(this.tileSize - 8, this.tileSize - 8);
         tile.setInteractive({ useHandCursor: true });
@@ -266,7 +266,7 @@ export default class Board {
         if (this.tiles[row][col] === null) {
           const tileX = this.x + col * this.tileSize + this.tileSize / 2;
           const tileY = this.y + row * this.tileSize + this.tileSize / 2;
-          const type = this.tileTypes[Math.floor(Math.random() * this.tileTypes.length)];
+          const type = this.getSafeTileType(col, row);
 
           const tile = this.scene.add.image(tileX, tileY, type).setDisplaySize(this.tileSize - 8, this.tileSize - 8);
           tile.setInteractive({ useHandCursor: true });
@@ -283,6 +283,38 @@ export default class Board {
         }
       }
     }
+  }
+   
+    // Новый метод: выбирает фишку, которая не создает линию из 3-х при старте
+  getSafeTileType(col, row) {
+    let availableTypes = [...this.tileTypes];
+    
+    // Проверяем 2 фишки слева
+    if (col >= 2) {
+      const left1 = this.tiles[row][col - 1];
+      const left2 = this.tiles[row][col - 2];
+      if (left1 && left2 && left1.texture.key === left2.texture.key) {
+        // Убираем этот тип из доступных, чтобы не было тройки по горизонтали
+        availableTypes = availableTypes.filter(t => t !== left1.texture.key);
+      }
+    }
+    
+    // Проверяем 2 фишки сверху
+    if (row >= 2) {
+      const top1 = this.tiles[row - 1][col];
+      const top2 = this.tiles[row - 2][col];
+      if (top1 && top2 && top1.texture.key === top2.texture.key) {
+        // Убираем этот тип из доступных, чтобы не было тройки по вертикали
+        availableTypes = availableTypes.filter(t => t !== top1.texture.key);
+      }
+    }
+    
+    // Если вдруг все типы отфильтровались (маловероятно, но бывает), берем любую
+    if (availableTypes.length === 0) {
+      availableTypes = this.tileTypes;
+    }
+
+    return availableTypes[Math.floor(Math.random() * availableTypes.length)];
   }
 
   createBonus(tile, type) {
