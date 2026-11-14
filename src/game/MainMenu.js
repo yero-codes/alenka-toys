@@ -45,7 +45,7 @@ export default class MainMenu extends Phaser.Scene {
     this.mainHud.create();
 
     // Загружаем жизни из localStorage и обновляем
-    const savedLives = parseInt(localStorage.getItem('lives'));
+    let savedLives = parseInt(localStorage.getItem('lives'));
     if (isNaN(savedLives)) {
       savedLives = MAX_LIVES;
       localStorage.setItem('lives', MAX_LIVES);
