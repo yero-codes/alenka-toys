@@ -96,16 +96,35 @@ export default class Board {
       } else {
         if (this.hud) {
           this.hud.updateMoves(this.hud.moves - 1);
+          
+          // Прямая проверка на поражение
+          if (this.hud.moves <= 0 && !this.scene.isGameOver) {
+            // Если уток меньше 10 — это точно поражение
+            if (this.hud.collectedDucks < 10) {
+              this.scene.showEndScreen('ПОРАЖЕНИЕ', 'У вас закончились ходы!');
+            }
+          }
         }
       }
     });
   }
 
-  checkMatches() {
-    const matches = new Set();
+    checkMatches() {
     if (this.scene.isGameOver) return false;
 
-    // Горизонтальные
+    // 👇 1. ПРОВЕРКА НА КОНЕЦ ИГРЫ (всегда в самом начале)
+    if (this.hud && this.hud.moves <= 0) {
+      if (this.hud.collectedDucks >= 10) {
+        this.scene.showEndScreen('ПОБЕДА!', 'Вы собрали всех уточек!');
+      } else {
+        this.scene.showEndScreen('ПОРАЖЕНИЕ', 'У вас закончились ходы!');
+      }
+      return true;
+    }
+
+    const matches = new Set();
+
+    // Горизонтальные (код не меняем)
     for (let row = 0; row < this.boardSize; row++) {
       let count = 1;
       for (let col = 1; col < this.boardSize; col++) {
@@ -146,7 +165,7 @@ export default class Board {
       }
     }
 
-    // Вертикальные
+    // Вертикальные (код не меняем)
     for (let col = 0; col < this.boardSize; col++) {
       let count = 1;
       for (let row = 1; row < this.boardSize; row++) {
@@ -212,14 +231,6 @@ export default class Board {
         this.refillBoard();
         this.scene.time.delayedCall(300, () => this.checkMatches());
       });
-
-      if (this.hud && this.hud.collectedDucks >= 10) {
-        this.scene.showEndScreen('ПОБЕДА!', 'Вы собрали всех уточек!');
-        return true;
-      } else if (this.hud && this.hud.moves <= 0) {
-        this.scene.showEndScreen('ПОРАЖЕНИЕ', 'У вас закончились ходы!');
-        return true;
-      }
 
       return true;
     }

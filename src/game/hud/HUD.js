@@ -81,6 +81,11 @@ export default class HUD {
   updateTarget(collected) {
     this.collectedDucks = collected;
     this.targetText.setText(`Цель: ${this.collectedDucks} / 10 уточек`);
+
+    // ДОБАВЛЕНО: Мгновенная проверка на победу
+    if (this.collectedDucks >= 10 && !this.scene.isGameOver) {
+      this.scene.showEndScreen('ПОБЕДА!', 'Вы собрали всех уточек!');
+    }
   }
 
   updateLevel(level) {

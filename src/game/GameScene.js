@@ -32,11 +32,9 @@ export default class GameScene extends Phaser.Scene {
     this.load.image('tile-duck', duckImg);
     this.load.image('tile-pyramid', pyramidImg);
     this.load.image('tile-ball-green', ballGreenImg);
-
     this.load.image('bonus-scissors', scissorsBonusImg);
     this.load.image('bonus-umbrella', umbrellaBonusImg);
     this.load.image('bonus-palette', paletteBonusImg);
-
     this.load.image('btn-back', btnBackImg);
     this.load.image('hud-bg', hudBgImg);
     this.load.image('level-bg', levelBgImg);
@@ -91,6 +89,9 @@ export default class GameScene extends Phaser.Scene {
           const targetTile = this.board.tiles[targetY][targetX];
           if (targetTile) {
             this.board.swapTiles(this.dragTile, targetTile);
+
+            // Проверяем конец игры чуть позже, после анимации и обновления HUD
+            this.time.delayedCall(500, () => this.checkGameState());
           }
         }
       }
@@ -99,25 +100,39 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
+    checkGameState() {
+    if (this.isGameOver) return;
+
+    if (this.hud.moves <= 0) {
+      if (this.hud.collectedDucks >= 10) {
+        this.showEndScreen('ПОБЕДА!', 'Вы собрали всех уточек!');
+      } else {
+        this.showEndScreen('ПОРАЖЕНИЕ', 'У вас закончились ходы!');
+      }
+    }
+  }
+
   showEndScreen(title, message) {
+     // ДОБАВЛЕНО: Защита от повторного вызова окна
+    if (this.isGameOver) return;
+
     this.isGameOver = true;
-    // 👇 ЕСЛИ ЭТО ПОРАЖЕНИЕ, ОТНИМАЕМ ЖИЗНЬ
+
+    //  ЕСЛИ ЭТО ПОРАЖЕНИЕ, ОТНИМАЕМ ЖИЗНЬ
     if (title === 'ПОРАЖЕНИЕ') {
       let currentLives = parseInt(localStorage.getItem('lives')) || 5;
       currentLives = Math.max(0, currentLives - 1); // Не уходим в минус
       localStorage.setItem('lives', currentLives);
-      
-      if (this.hud) {
-        this.hud.updateLives(currentLives);
-      }
       
       if (currentLives === 0) {
         // TODO: Здесь будет блокировка игры и таймер
         message = 'Жизни закончились! Ждите восстановления.';
       }
   }
+    
+        // затемнение фона
     this.add.rectangle(215, 466, 430, 932, 0x000000, 0.7).setDepth(999);
-
+        // заголовок
     this.add.text(215, 350, title, {
       fontSize: '48px',
       fontFamily: 'Arial',
@@ -125,6 +140,7 @@ export default class GameScene extends Phaser.Scene {
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(1000);
 
+       // текст сообщения
     this.add.text(215, 450, message, {
       fontSize: '24px',
       fontFamily: 'Arial',
@@ -133,6 +149,7 @@ export default class GameScene extends Phaser.Scene {
       wordWrap: { width: 350 }
     }).setOrigin(0.5).setDepth(1000);
 
+      // Кнопка перезапуска
     const restartBtn = this.add.text(215, 600, 'Играть снова', {
       fontSize: '32px',
       color: '#fff',
@@ -140,11 +157,23 @@ export default class GameScene extends Phaser.Scene {
       padding: { x: 20, y: 10 }
     }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(1000);
 
-    restartBtn.on('pointerdown', () => {
+        restartBtn.on('pointerdown', () => {
       this.isGameOver = false;
-      this.currentLevel++; // 👈 Увеличиваем уровень
-      localStorage.setItem('currentLevel', this.currentLevel); // 👈 Сохраняем в localStorage
-      this.hud.updateLevel(this.currentLevel); // 👈 Обновляем текст (на всякий случай)
+      
+      // Если это была победа, повышаем уровень. Если поражение — нет.
+      if (title === 'ПОБЕДА!') {
+        this.currentLevel++;
+        localStorage.setItem('currentLevel', this.currentLevel);
+      }
+
+      // Если жизни кончились, отправляем в меню, а не рестартим
+      let currentLives = parseInt(localStorage.getItem('lives')) || 5;
+      if (currentLives === 0) {
+          this.scene.start('MainMenu');
+          return;
+      }
+
+      this.hud.updateLevel(this.currentLevel);
       this.scene.restart();
     });
   }
