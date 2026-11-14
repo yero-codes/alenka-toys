@@ -123,6 +123,11 @@ export default class GameScene extends Phaser.Scene {
       let currentLives = parseInt(localStorage.getItem('lives')) || 5;
       currentLives = Math.max(0, currentLives - 1); // Не уходим в минус
       localStorage.setItem('lives', currentLives);
+
+      //запускаем таймер восстановления при потере жизни
+      if (currentLives < 5) {
+        localStorage.setItem('lastLivesRegenTime', Date.now());
+      }
       
       if (currentLives === 0) {
         // TODO: Здесь будет блокировка игры и таймер

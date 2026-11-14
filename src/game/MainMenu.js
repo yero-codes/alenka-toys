@@ -6,6 +6,9 @@ import bgRoomImg from '../assets/bg-room.png';
 import iconHeartImg from '../assets/icon-heart.png'; // <-- 1. Добавили импорт
 import MainHUD from './hud/MainHUD';
 
+const MAX_LIVES = 5;
+const REGEN_TIME_MS = 5 * 60 * 1000; // 5 минут
+
 export default class MainMenu extends Phaser.Scene {
   constructor() {
     super({ key: 'MainMenu' });
@@ -40,9 +43,44 @@ export default class MainMenu extends Phaser.Scene {
     // 5. HUD (создаем В КОНЦЕ, чтобы сердечки были поверх всех элементов)
     this.mainHud = new MainHUD(this);
     this.mainHud.create();
-    
+
     // Загружаем жизни из localStorage и обновляем
-    const savedLives = parseInt(localStorage.getItem('lives')) || 5;
+    const savedLives = parseInt(localStorage.getItem('lives'));
+    if (isNaN(savedLives)) {
+      savedLives = MAX_LIVES;
+      localStorage.setItem('lives', MAX_LIVES);
+      localStorage.setItem('lastLivesRegenTime', Date.now());
+    }
+    // Отображение жизней на старте
     this.mainHud.updateLives(savedLives);
+
+    // Запускаем проверку на восстановление жизней каждую секунду
+    this.checkLivesRegen();
+    this.time.addEvent({
+      delay: 1000,
+      callback: this.checkLivesRegen,
+      callbackScope: this,
+      loop: true
+    });
+  }
+
+  checkLivesRegen() {
+    let currentLives = parseInt(localStorage.getItem('lives')) || MAX_LIVES;
+    let lastRegenTime = parseInt(localStorage.getItem('lastLivesRegenTime')) || Date.now();
+
+    if (currentLives < MAX_LIVES) {
+      const now = Date.now();
+      const timePassed = now - lastRegenTime;
+      const livesToAdd = Math.floor(timePassed / REGEN_TIME_MS);
+
+      if (livesToAdd > 0) {
+        currentLives = Math.min(MAX_LIVES, currentLives + livesToAdd);
+        localStorage.setItem('lives', currentLives);
+        // Сдвигаем время восстановления
+        localStorage.setItem('lastLivesRegenTime', now - (timePassed % REGEN_TIME_MS));
+
+        this.mainHud.updateLives(currentLives);
+      }
+    }
   }
 }
