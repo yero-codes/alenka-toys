@@ -96,14 +96,6 @@ export default class Board {
       } else {
         if (this.hud) {
           this.hud.updateMoves(this.hud.moves - 1);
-
-          // Прямая проверка на поражение
-          if (this.hud.moves <= 0 && !this.scene.isGameOver) {
-            // Если уток меньше 10 — это точно поражение
-
-            this.scene.showEndScreen('ПОРАЖЕНИЕ', 'У вас закончились ходы!');
-          }
-
         }
       }
     });
@@ -257,7 +249,7 @@ if (matches.size > 0) {
           const tileY = this.y + row * this.tileSize + this.tileSize / 2;
           const type = this.getSafeTileType(col, row);
 
-          const tile = this.scene.add.image(tileX, tileY, type).setDisplaySize(this.tileSize - 8, this.tileSize - 8);
+          const tile = this.scene.add.image(tileX, tileY, type).setDisplaySize(this.tileSize - 10, this.tileSize - 10);
           tile.setInteractive({ useHandCursor: true });
           tile.gridX = col;
           tile.gridY = row;
