@@ -24,7 +24,7 @@ export default class Board {
         const tileY = this.y + row * this.tileSize + this.tileSize / 2;
         const type = this.getSafeTileType(col, row);
 
-        const tile = this.scene.add.image(tileX, tileY, type).setDisplaySize(this.tileSize - 8, this.tileSize - 8);
+        const tile = this.scene.add.image(tileX, tileY, type).setDisplaySize(this.tileSize - 10, this.tileSize - 10);
         tile.setInteractive({ useHandCursor: true });
         tile.gridX = col;
         tile.gridY = row;
@@ -100,10 +100,10 @@ export default class Board {
           // Прямая проверка на поражение
           if (this.hud.moves <= 0 && !this.scene.isGameOver) {
             // Если уток меньше 10 — это точно поражение
-            if (this.hud.collectedDucks > 0) {
-              this.scene.showEndScreen('ПОРАЖЕНИЕ', 'У вас закончились ходы!');
-            }
+
+            this.scene.showEndScreen('ПОРАЖЕНИЕ', 'У вас закончились ходы!');
           }
+
         }
       }
     });
@@ -111,16 +111,6 @@ export default class Board {
 
   checkMatches() {
     if (this.scene.isGameOver) return false;
-
-    // 👇 1. ПРОВЕРКА НА КОНЕЦ ИГРЫ (всегда в самом начале)
-    if (this.hud && this.hud.moves <= 0) {
-      if (this.hud.collectedDucks <= 0) {
-        this.scene.showEndScreen('ПОБЕДА!', 'Вы собрали всех уточек!');
-      } else {
-        this.scene.showEndScreen('ПОРАЖЕНИЕ', 'У вас закончились ходы!');
-      }
-      return true;
-    }
 
     const matches = new Set();
 
@@ -207,33 +197,32 @@ export default class Board {
     }
 
     // Удаление
-    if (matches.size > 0) {
-      let collectedTarget = 0;
-      matches.forEach(tile => {
-        if (tile.texture.key === this.hud.targetType) {
-          collectedTarget++;
-        }
-      });
-
-      if (this.hud) {
-        const newDuckCount = Math.max(0, this.hud.collectedDucks - collectedTarget);
-        this.hud.updateTarget(newDuckCount);
+if (matches.size > 0) {
+  if (this.hud) {
+    this.hud.updateScore(this.hud.score + matches.size * 10);
+    
+    // 👇 Сообщаем HUD о каждой собранной фишке
+    matches.forEach(tile => {
+      if (!tile.getData('bonusType')) {
+        this.hud.collectTile(tile.texture.key);
       }
+    });
+  }
 
-      matches.forEach(tile => {
-        if (tile.getData('bonusType')) return;
-        tile.destroy();
-        this.tiles[tile.gridY][tile.gridX] = null;
-      });
+  matches.forEach(tile => {
+    if (tile.getData('bonusType')) return;
+    tile.destroy();
+    this.tiles[tile.gridY][tile.gridX] = null;
+  });
 
-      this.scene.time.delayedCall(250, () => {
-        this.dropTiles();
-        this.refillBoard();
-        this.scene.time.delayedCall(300, () => this.checkMatches());
-      });
+  this.scene.time.delayedCall(250, () => {
+    this.dropTiles();
+    this.refillBoard();
+    this.scene.time.delayedCall(300, () => this.checkMatches());
+  });
 
-      return true;
-    }
+  return true;
+}
     return false;
   }
 
@@ -338,7 +327,7 @@ export default class Board {
     bonusImg.on('pointerdown', () => this.activateBonus(bonusImg));
   }
 
-  activateBonus(bonusTile) {
+    activateBonus(bonusTile) {
     const type = bonusTile.getData('bonusType');
     const gridX = bonusTile.gridX;
     const gridY = bonusTile.gridY;
@@ -346,10 +335,14 @@ export default class Board {
     bonusTile.destroy();
     this.tiles[gridY][gridX] = null;
 
+    // 👇 СОБИРАЕМ ВСЕ УНИЧТОЖЕННЫЕ ФИШКИ В МАССИВ
+    let destroyedTiles = [];
+
     if (type === 'scissors') {
       for (let col = 0; col < this.boardSize; col++) {
         const tile = this.tiles[gridY][col];
         if (tile) {
+          destroyedTiles.push(tile);
           tile.destroy();
           this.tiles[gridY][col] = null;
         }
@@ -358,6 +351,7 @@ export default class Board {
       for (let row = 0; row < this.boardSize; row++) {
         const tile = this.tiles[row][gridX];
         if (tile) {
+          destroyedTiles.push(tile);
           tile.destroy();
           this.tiles[row][gridX] = null;
         }
@@ -368,12 +362,23 @@ export default class Board {
           if (r >= 0 && r < this.boardSize && c >= 0 && c < this.boardSize) {
             const tile = this.tiles[r][c];
             if (tile) {
+              destroyedTiles.push(tile);
               tile.destroy();
               this.tiles[r][c] = null;
             }
           }
         }
       }
+    }
+
+    // 👇 ОТПРАВЛЯЕМ ВСЕ УНИЧТОЖЕННЫЕ ФИШКИ В HUD
+    if (this.hud && destroyedTiles.length > 0) {
+      this.hud.updateScore(this.hud.score + destroyedTiles.length * 10);
+      destroyedTiles.forEach(tile => {
+        if (!tile.getData('bonusType')) { // Игнорируем сами бонусы
+          this.hud.collectTile(tile.texture.key);
+        }
+      });
     }
 
     this.scene.time.delayedCall(250, () => {

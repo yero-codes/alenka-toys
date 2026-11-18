@@ -17,6 +17,7 @@ import HUD from './hud/HUD';
 import levelBgImg from '../assets/level-bg.png';
 import iconHeartImg from '../assets/icon-heart.png';
 import btnMovesImg from '../assets/btn-moves.png';
+import { getLevelData } from './Levels';
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -42,80 +43,98 @@ export default class GameScene extends Phaser.Scene {
     this.load.image('btn-moves', btnMovesImg);
   }
 
-  create() {
-    this.currentLevel = parseInt(localStorage.getItem('currentLevel')) || 1;
-    this.isGameOver = false;
+    create() {
+    // 1. Фон комнаты
     this.add.image(215, 466, 'bg-room').setDisplaySize(430, 932);
 
-    const boardBg = this.add.image(215, 466, 'board-bg').setDisplaySize(430, 430);
+    // 2. Голубая подложка
+    const boardBg = this.add.image(215, 570, 'board-bg').setDisplaySize(420, 420);
 
-    const boardSize = 8;
-    const tileSize = 46;
-    const offsetX = boardBg.x - (boardSize * tileSize) / 2;
-    const offsetY = boardBg.y - (boardSize * tileSize) / 2;
+    // 3. Получаем уровень
+    this.currentLevel = parseInt(localStorage.getItem('currentLevel')) || 1;
+    const levelData = getLevelData(this.currentLevel);
 
-    const tileTypes = [
-      'tile-bow', 'tile-cube-blue', 'tile-cube-red',
-      'tile-duck', 'tile-pyramid', 'tile-ball-green'
-    ];
-
-    // Создаем HUD и Board
+    // 4. Создаем HUD
     this.hud = new HUD(this);
-    
-    this.hud.create();
+    this.hud.initLevel(levelData);
     this.hud.updateLevel(this.currentLevel);
-    this.board = new Board(this, offsetX, offsetY, tileSize, boardSize, tileTypes);
+
+    // 5. Вычисляем координаты для центрирования доски
+    const boardSize = 8;
+    const tileSize = 45; 
+    const boardWidth = boardSize * tileSize;
+    const boardHeight = boardSize * tileSize;
+
+    const boardX = boardBg.x - (boardWidth / 2);
+    const boardY = boardBg.y - (boardHeight / 2);
+
+    // 👇 6. ФОРМИРУЕМ СПИСОК ФИШЕК НА ОСНОВЕ ЦЕЛЕЙ УРОВНЯ
+    let availableTiles = levelData.targets.map(t => t.type);
+    
+    // Если целей мало (например, 2), добавляем случайные фишки для разнообразия
+    const allPossibleTiles = ['tile-duck', 'tile-pyramid', 'tile-bow', 'tile-cube-blue', 'tile-cube-red', 'tile-ball-green'];
+    allPossibleTiles.forEach(tile => {
+      if (availableTiles.length < 4 && !availableTiles.includes(tile)) {
+        availableTiles.push(tile);
+      }
+    });
+
+    // 7. Создаем доску с новым списком фишек
+    this.board = new Board(this, boardX, boardY, tileSize, boardSize, availableTiles);
     this.board.setHUD(this.hud);
     this.board.create();
 
-    
-
-    // Обработчик свайпа (перенесен из GameScene)
+    // 7. Обработчик свайпа (ВОССТАНОВЛЕН И ИСПРАВЛЕН)
     this.input.on('pointerup', (pointer) => {
       if (!this.dragTile) return;
 
       const dx = pointer.x - this.startX;
       const dy = pointer.y - this.startY;
 
+      // Если свайп был достаточно длинным (больше 20 пикселей)
       if (Math.abs(dx) > 20 || Math.abs(dy) > 20) {
         let targetX = this.dragTile.gridX;
         let targetY = this.dragTile.gridY;
 
+        // Определяем направление
         if (Math.abs(dx) > Math.abs(dy)) {
           targetX += dx > 0 ? 1 : -1;
         } else {
           targetY += dy > 0 ? 1 : -1;
         }
 
-        if (targetX >= 0 && targetX < boardSize && targetY >= 0 && targetY < boardSize) {
+        // Проверяем, не выходим ли за границы поля
+        if (targetX >= 0 && targetX < this.board.boardSize && targetY >= 0 && targetY < this.board.boardSize) {
           const targetTile = this.board.tiles[targetY][targetX];
+          
+          // Если там есть фишка — меняем их местами
           if (targetTile) {
             this.board.swapTiles(this.dragTile, targetTile);
-
-            // Проверяем конец игры чуть позже, после анимации и обновления HUD
+            
+            // Проверяем конец игры чуть позже, после анимации
             this.time.delayedCall(500, () => this.checkGameState());
           }
         }
       }
 
+      // Сбрасываем активную фишку
       this.dragTile = null;
     });
   }
 
-    checkGameState() {
+  checkGameState() {
     if (this.isGameOver) return;
 
+    // Если ходы кончились, а победа не была вызвана через HUD.collectTile() — это поражение
     if (this.hud.moves <= 0) {
-      if (this.hud.collectedDucks >= 10) {
-        this.showEndScreen('ПОБЕДА!', 'Вы собрали всех уточек!');
-      } else {
-        this.showEndScreen('ПОРАЖЕНИЕ', 'У вас закончились ходы!');
-      }
+      this.showEndScreen('ПОРАЖЕНИЕ', 'У вас закончились ходы!');
     }
   }
 
+
+
   showEndScreen(title, message) {
-     // ДОБАВЛЕНО: Защита от повторного вызова окна
+    // ДОБАВЛЕНО: Защита от повторного вызова окна
     if (this.isGameOver) return;
 
     this.isGameOver = true;
@@ -130,16 +149,16 @@ export default class GameScene extends Phaser.Scene {
       if (currentLives < 5) {
         localStorage.setItem('lastLivesRegenTime', Date.now());
       }
-      
+
       if (currentLives === 0) {
         // TODO: Здесь будет блокировка игры и таймер
         message = 'Жизни закончились! Ждите восстановления.';
       }
-  }
-    
-        // затемнение фона
+    }
+
+    // затемнение фона
     this.add.rectangle(215, 466, 430, 932, 0x000000, 0.7).setDepth(999);
-        // заголовок
+    // заголовок
     this.add.text(215, 350, title, {
       fontSize: '48px',
       fontFamily: 'Arial',
@@ -147,7 +166,7 @@ export default class GameScene extends Phaser.Scene {
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(1000);
 
-       // текст сообщения
+    // текст сообщения
     this.add.text(215, 450, message, {
       fontSize: '24px',
       fontFamily: 'Arial',
@@ -156,7 +175,7 @@ export default class GameScene extends Phaser.Scene {
       wordWrap: { width: 350 }
     }).setOrigin(0.5).setDepth(1000);
 
-      // Кнопка перезапуска
+    // Кнопка перезапуска
     const restartBtn = this.add.text(215, 600, 'Играть снова', {
       fontSize: '32px',
       color: '#fff',
@@ -164,9 +183,9 @@ export default class GameScene extends Phaser.Scene {
       padding: { x: 20, y: 10 }
     }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(1000);
 
-        restartBtn.on('pointerdown', () => {
+    restartBtn.on('pointerdown', () => {
       this.isGameOver = false;
-      
+
       // Если это была победа, повышаем уровень. Если поражение — нет.
       if (title === 'ПОБЕДА!') {
         this.currentLevel++;
@@ -176,8 +195,8 @@ export default class GameScene extends Phaser.Scene {
       // Если жизни кончились, отправляем в меню, а не рестартим
       let currentLives = parseInt(localStorage.getItem('lives')) || 5;
       if (currentLives === 0) {
-          this.scene.start('MainMenu');
-          return;
+        this.scene.start('MainMenu');
+        return;
       }
 
       this.hud.updateLevel(this.currentLevel);
