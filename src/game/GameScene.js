@@ -16,6 +16,7 @@ import Board from './board/Board';
 import HUD from './hud/HUD';
 import levelBgImg from '../assets/level-bg.png';
 import iconHeartImg from '../assets/icon-heart.png';
+import btnMovesImg from '../assets/btn-moves.png';
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -38,6 +39,7 @@ export default class GameScene extends Phaser.Scene {
     this.load.image('btn-back', btnBackImg);
     this.load.image('hud-bg', hudBgImg);
     this.load.image('level-bg', levelBgImg);
+    this.load.image('btn-moves', btnMovesImg);
   }
 
   create() {

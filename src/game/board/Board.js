@@ -96,11 +96,11 @@ export default class Board {
       } else {
         if (this.hud) {
           this.hud.updateMoves(this.hud.moves - 1);
-          
+
           // Прямая проверка на поражение
           if (this.hud.moves <= 0 && !this.scene.isGameOver) {
             // Если уток меньше 10 — это точно поражение
-            if (this.hud.collectedDucks < 10) {
+            if (this.hud.collectedDucks > 0) {
               this.scene.showEndScreen('ПОРАЖЕНИЕ', 'У вас закончились ходы!');
             }
           }
@@ -109,12 +109,12 @@ export default class Board {
     });
   }
 
-    checkMatches() {
+  checkMatches() {
     if (this.scene.isGameOver) return false;
 
     // 👇 1. ПРОВЕРКА НА КОНЕЦ ИГРЫ (всегда в самом начале)
     if (this.hud && this.hud.moves <= 0) {
-      if (this.hud.collectedDucks >= 10) {
+      if (this.hud.collectedDucks <= 0) {
         this.scene.showEndScreen('ПОБЕДА!', 'Вы собрали всех уточек!');
       } else {
         this.scene.showEndScreen('ПОРАЖЕНИЕ', 'У вас закончились ходы!');
@@ -216,8 +216,8 @@ export default class Board {
       });
 
       if (this.hud) {
-        this.hud.updateScore(this.hud.score + matches.size * 10);
-        this.hud.updateTarget(this.hud.collectedDucks + collectedTarget);
+        const newDuckCount = Math.max(0, this.hud.collectedDucks - collectedTarget);
+        this.hud.updateTarget(newDuckCount);
       }
 
       matches.forEach(tile => {
@@ -284,11 +284,11 @@ export default class Board {
       }
     }
   }
-   
-    // Новый метод: выбирает фишку, которая не создает линию из 3-х при старте
+
+  // Новый метод: выбирает фишку, которая не создает линию из 3-х при старте
   getSafeTileType(col, row) {
     let availableTypes = [...this.tileTypes];
-    
+
     // Проверяем 2 фишки слева
     if (col >= 2) {
       const left1 = this.tiles[row][col - 1];
@@ -298,7 +298,7 @@ export default class Board {
         availableTypes = availableTypes.filter(t => t !== left1.texture.key);
       }
     }
-    
+
     // Проверяем 2 фишки сверху
     if (row >= 2) {
       const top1 = this.tiles[row - 1][col];
@@ -308,7 +308,7 @@ export default class Board {
         availableTypes = availableTypes.filter(t => t !== top1.texture.key);
       }
     }
-    
+
     // Если вдруг все типы отфильтровались (маловероятно, но бывает), берем любую
     if (availableTypes.length === 0) {
       availableTypes = this.tileTypes;
