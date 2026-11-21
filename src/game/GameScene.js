@@ -24,6 +24,8 @@ import swipeSnd from '../assets/swipe.mp3';
 import scissorsSnd from '../assets/scissors.mp3';
 import umbrellaSnd from '../assets/umbrella.mp3';
 import paletteSnd from '../assets/palette.mp3';
+import victorySnd from '../assets/victory.mp3';
+import failSnd from '../assets/fail.mp3';
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -52,6 +54,8 @@ export default class GameScene extends Phaser.Scene {
     this.load.audio('scissors', scissorsSnd);
     this.load.audio('umbrella', umbrellaSnd);
     this.load.audio('palette', paletteSnd);
+    this.load.audio('victory', victorySnd);
+    this.load.audio('fail', failSnd);
   }
 
   create() {
@@ -148,7 +152,7 @@ export default class GameScene extends Phaser.Scene {
 
     // Если ходы кончились, а победа не была вызвана через HUD.collectTile() — это поражение
     if (this.hud.moves <= 0) {
-      this.showEndScreen('ПОРАЖЕНИЕ', 'У вас закончились ходы!');
+      this.showEndScreen('ПОПРОБУЙ ЕЩЕ!', 'У вас закончились ходы!');
     }
   }
 
@@ -157,11 +161,16 @@ export default class GameScene extends Phaser.Scene {
   showEndScreen(title, message) {
     // ДОБАВЛЕНО: Защита от повторного вызова окна
     if (this.isGameOver) return;
-
-    this.isGameOver = true;
+        this.isGameOver = true;
+        //  ДОБАВЛЯЕМ МУЗЫКУ ДЛЯ ЭКРАНА
+    if (title === 'ПОБЕДА!') {
+      this.audioManager.playSound('victory', 1.0); // Победа
+    } else {
+      this.audioManager.playSound('fail', 1.0);    // Поражение (тише)
+    }
 
     //  ЕСЛИ ЭТО ПОРАЖЕНИЕ, ОТНИМАЕМ ЖИЗНЬ
-    if (title === 'ПОРАЖЕНИЕ') {
+    if (title === 'ПОПРОБУЙ ЕЩЕ!') {
       let currentLives = parseInt(localStorage.getItem('lives')) || 5;
       currentLives = Math.max(0, currentLives - 1); // Не уходим в минус
       localStorage.setItem('lives', currentLives);
