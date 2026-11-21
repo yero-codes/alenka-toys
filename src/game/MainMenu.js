@@ -5,6 +5,8 @@ import titleImg from '../assets/title.png';
 import bgRoomImg from '../assets/bg-room.png';
 import iconHeartImg from '../assets/icon-heart.png'; // <-- 1. Добавили импорт
 import MainHUD from './hud/MainHUD';
+import bgMusic from '../assets/bg-music.mp3';
+import AudioManager from './AudioManager';
 
 const MAX_LIVES = 5;
 const REGEN_TIME_MS = 5 * 60 * 1000; // 5 минут
@@ -20,7 +22,8 @@ export default class MainMenu extends Phaser.Scene {
     this.load.image('alenka', alenkaImg);
     this.load.image('play-btn', playBtnImg);
     this.load.image('title', titleImg);
-    this.load.image('icon-heart', iconHeartImg); // <-- 2. Загружаем иконку
+    this.load.image('icon-heart', iconHeartImg);
+    this.load.audio('menu-music', bgMusic);
   }
 
   create() {
@@ -39,6 +42,16 @@ export default class MainMenu extends Phaser.Scene {
     playBtn.setInteractive({ useHandCursor: true });
     playBtn.on('pointerdown', () => this.scene.start('GameScene'));
     playBtn.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+     
+     this.audioManager = new AudioManager(this);
+    // Запускаем музыку меню (она будет крутиться, пока игрок в меню)
+    this.audioManager.playBackgroundMusic('menu-music');
+
+    // При переходе в игру — останавливаем музыку меню
+    playBtn.on('pointerdown', () => {
+      this.audioManager.stopBackgroundMusic();
+      this.scene.start('GameScene');
+    });
 
     // 5. HUD (создаем В КОНЦЕ, чтобы сердечки были поверх всех элементов)
     this.mainHud = new MainHUD(this);

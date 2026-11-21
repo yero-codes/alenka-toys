@@ -18,6 +18,8 @@ import levelBgImg from '../assets/level-bg.png';
 import iconHeartImg from '../assets/icon-heart.png';
 import btnMovesImg from '../assets/btn-moves.png';
 import { getLevelData } from './Levels';
+import AudioManager from './AudioManager';
+import bgMusic from '../assets/bg-music.mp3';
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -41,36 +43,48 @@ export default class GameScene extends Phaser.Scene {
     this.load.image('hud-bg', hudBgImg);
     this.load.image('level-bg', levelBgImg);
     this.load.image('btn-moves', btnMovesImg);
+    this.load.audio('bg-music', bgMusic);
   }
 
-    create() {
-    // 1. Фон комнаты
+  create() {
+    // Создаем менеджер звука
+    this.audioManager = new AudioManager(this);
+
+    // Запуск музыки после первого клика (для обхода блокировки в браузерах)
+    this.input.once('pointerdown', () => {
+      this.audioManager.playBackgroundMusic();
+    });
+
+    this.audioManager = new AudioManager(this);
+    // Музыку не запускаем! Только эффекты.
+
+    // Фон комнаты, картинка с окном
     this.add.image(215, 466, 'bg-room').setDisplaySize(430, 932);
 
-    // 2. Голубая подложка
-    const boardBg = this.add.image(215, 570, 'board-bg').setDisplaySize(420, 420);
+    // Голубая подложка, игровое поле 8х8
+    const boardBg = this.add.image(215, 500, 'board-bg').setDisplaySize(420, 420);
 
-    // 3. Получаем уровень
+    // Получаем уровень
     this.currentLevel = parseInt(localStorage.getItem('currentLevel')) || 1;
     const levelData = getLevelData(this.currentLevel);
 
-    // 4. Создаем HUD
+    // Создаем HUD
     this.hud = new HUD(this);
     this.hud.initLevel(levelData);
     this.hud.updateLevel(this.currentLevel);
 
-    // 5. Вычисляем координаты для центрирования доски
+    // Вычисляем координаты для центрирования доски
     const boardSize = 8;
-    const tileSize = 45; 
+    const tileSize = 45;
     const boardWidth = boardSize * tileSize;
     const boardHeight = boardSize * tileSize;
 
     const boardX = boardBg.x - (boardWidth / 2);
     const boardY = boardBg.y - (boardHeight / 2);
 
-    // 👇 6. ФОРМИРУЕМ СПИСОК ФИШЕК НА ОСНОВЕ ЦЕЛЕЙ УРОВНЯ
+    // ФОРМИРУЕМ СПИСОК ФИШЕК НА ОСНОВЕ ЦЕЛЕЙ УРОВНЯ
     let availableTiles = levelData.targets.map(t => t.type);
-    
+
     // Если целей мало (например, 2), добавляем случайные фишки для разнообразия
     const allPossibleTiles = ['tile-duck', 'tile-pyramid', 'tile-bow', 'tile-cube-blue', 'tile-cube-red', 'tile-ball-green'];
     allPossibleTiles.forEach(tile => {
@@ -79,12 +93,12 @@ export default class GameScene extends Phaser.Scene {
       }
     });
 
-    // 7. Создаем доску с новым списком фишек
+    // Создаем доску с новым списком фишек
     this.board = new Board(this, boardX, boardY, tileSize, boardSize, availableTiles);
     this.board.setHUD(this.hud);
     this.board.create();
 
-    // 7. Обработчик свайпа (ВОССТАНОВЛЕН И ИСПРАВЛЕН)
+    // Обработчик свайпа (ВОССТАНОВЛЕН И ИСПРАВЛЕН)
     this.input.on('pointerup', (pointer) => {
       if (!this.dragTile) return;
 
@@ -106,11 +120,11 @@ export default class GameScene extends Phaser.Scene {
         // Проверяем, не выходим ли за границы поля
         if (targetX >= 0 && targetX < this.board.boardSize && targetY >= 0 && targetY < this.board.boardSize) {
           const targetTile = this.board.tiles[targetY][targetX];
-          
+
           // Если там есть фишка — меняем их местами
           if (targetTile) {
             this.board.swapTiles(this.dragTile, targetTile);
-            
+
             // Проверяем конец игры чуть позже, после анимации
             this.time.delayedCall(500, () => this.checkGameState());
           }
@@ -119,6 +133,17 @@ export default class GameScene extends Phaser.Scene {
 
       // Сбрасываем активную фишку
       this.dragTile = null;
+    });
+
+    // Запуск музыки после первого клика
+    this.input.once('pointerdown', () => {
+      this.audioManager.playBackgroundMusic();
+    });
+
+    // 👇 ДОБАВЛЯЕМ ЭТОТ БЛОК:
+    // При закрытии сцены (переход в меню, рестарт) — останавливаем и уничтожаем музыку
+    this.events.once('shutdown', () => {
+      this.audioManager.destroy();
     });
   }
 
