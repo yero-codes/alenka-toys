@@ -2,31 +2,29 @@ export default class AudioManager {
   constructor(scene) {
     this.scene = scene;
     this.bgMusic = null;
-    this.isMusicMuted = false;
   }
 
-  // Метод теперь принимает ключ трека (например, 'menu-music' или 'game-music')
+  // Метод теперь проверяет настройку из localStorage перед запуском
   playBackgroundMusic(trackKey = 'bg-music') {
-    // Если уже играет эта же музыка — ничего не делаем
+    // Если музыка выключена в настройках — не запускаем
+    const isMusicMuted = localStorage.getItem('musicMuted') === 'true';
+    if (isMusicMuted) return;
+
     if (this.bgMusic && this.bgMusic.isPlaying && this.bgMusic.key === trackKey) {
       return;
     }
 
-    // Если играет другая музыка — останавливаем её
     if (this.bgMusic && this.bgMusic.isPlaying) {
       this.bgMusic.stop();
       this.bgMusic.destroy();
     }
 
-    // Создаем и запускаем новую
     if (this.scene.cache.audio.exists(trackKey)) {
       this.bgMusic = this.scene.sound.add(trackKey, { 
         loop: true, 
-        volume: 0.4 
+        volume: 0.15 // Сделали тише, как договаривались ранее
       });
       this.bgMusic.play();
-    } else {
-      console.warn(`Аудио ${trackKey} не найдено в кэше.`);
     }
   }
 
@@ -38,20 +36,21 @@ export default class AudioManager {
     }
   }
 
-  // Воспроизведение коротких эффектов (свайп, хлопок)
-  playSound(key, volume = 0.6) {
+  // Метод теперь проверяет настройку звуков
+  playSound(key, volume = 0.8) {
+    const isSfxMuted = localStorage.getItem('sfxMuted') === 'true';
+    if (isSfxMuted) return; // Если звуки выключены — не играем
+
     if (this.scene.cache.audio.exists(key)) {
       this.scene.sound.play(key, { volume: volume });
     }
   }
-  
-    // Метод для полной остановки и очистки (при выходе из сцены)
+
   destroy() {
     if (this.bgMusic) {
       this.bgMusic.stop();
-      this.bgMusic.destroy(); // Удаляем объект из памяти
+      this.bgMusic.destroy();
       this.bgMusic = null;
     }
   }
 }
-

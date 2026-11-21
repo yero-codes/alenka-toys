@@ -51,6 +51,18 @@ export default class SettingsScene extends Phaser.Scene {
       let isMuted = localStorage.getItem('musicMuted') === 'true';
       localStorage.setItem('musicMuted', !isMuted);
       this.musicToggle.setText(this.getMusicLabel());
+    
+
+    //  ДОБАВЛЯЕМ МГНОВЕННОЕ ПРИМЕНЕНИЕ ВКЛ ВЫКЛ
+      if (this.audioManager) {
+        if (!isMuted) {
+          // Если только что выключили (было false, стало true)
+          this.audioManager.stopBackgroundMusic();
+        } else {
+          // Если только что включили
+          this.audioManager.playBackgroundMusic('menu-music');
+        }
+      }
     });
 
     // --- Блок звуков ---
