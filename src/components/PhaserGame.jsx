@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import Phaser from 'phaser';
 import MainMenu from '../game/MainMenu';
 import GameScene from '../game/GameScene';
+import SettingsScene from '../game/SettingsScene';
 
 function PhaserGame() {
   const gameRef = useRef(null);
@@ -15,7 +16,7 @@ function PhaserGame() {
         height: 932,
         parent: gameRef.current,
         backgroundColor: '#f5efe6',
-        scene: [MainMenu, GameScene],
+        scene: [MainMenu, GameScene, SettingsScene],
         scale: {
           mode: Phaser.Scale.FIT,
           autoCenter: Phaser.Scale.CENTER_BOTH,

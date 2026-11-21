@@ -7,6 +7,7 @@ import iconHeartImg from '../assets/icon-heart.png'; // <-- 1. Добавили 
 import MainHUD from './hud/MainHUD';
 import bgMusic from '../assets/bg-music.mp3';
 import AudioManager from './AudioManager';
+import toolsImg from '../assets/tools.png';
 
 const MAX_LIVES = 5;
 const REGEN_TIME_MS = 5 * 60 * 1000; // 5 минут
@@ -24,6 +25,7 @@ export default class MainMenu extends Phaser.Scene {
     this.load.image('title', titleImg);
     this.load.image('icon-heart', iconHeartImg);
     this.load.audio('menu-music', bgMusic);
+    this.load.image('btn-tools', toolsImg);
   }
 
   create() {
@@ -42,8 +44,18 @@ export default class MainMenu extends Phaser.Scene {
     playBtn.setInteractive({ useHandCursor: true });
     playBtn.on('pointerdown', () => this.scene.start('GameScene'));
     playBtn.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
-     
-     this.audioManager = new AudioManager(this);
+
+    // Кнопка настройки
+    const toolsBtn = this.add.image(50, 50, 'btn-tools')
+      .setDisplaySize(60, 60)
+      .setInteractive({ useHandCursor: true });
+
+    toolsBtn.on('pointerdown', () => {
+      if (this.audioManager) this.audioManager.stopBackgroundMusic(); // Останавливаем музыку
+      this.scene.start('SettingsScene');
+    });
+
+    this.audioManager = new AudioManager(this);
     // Запускаем музыку меню (она будет крутиться, пока игрок в меню)
     this.audioManager.playBackgroundMusic('menu-music');
 
