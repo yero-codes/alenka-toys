@@ -324,10 +324,19 @@ if (matches.size > 0) {
     const gridX = bonusTile.gridX;
     const gridY = bonusTile.gridY;
 
+    // ЗВУКИ ДЛЯ БОНУСОВ
+    if (type === 'scissors') {
+      this.scene.audioManager.playSound('scissors');
+    } else if (type === 'umbrella') {
+      this.scene.audioManager.playSound('umbrella');
+    } else if (type === 'palette') {
+      this.scene.audioManager.playSound('palette'); // или 'explosion'
+    }
+
     bonusTile.destroy();
     this.tiles[gridY][gridX] = null;
 
-    // 👇 СОБИРАЕМ ВСЕ УНИЧТОЖЕННЫЕ ФИШКИ В МАССИВ
+    //  СОБИРАЕМ ВСЕ УНИЧТОЖЕННЫЕ ФИШКИ В МАССИВ
     let destroyedTiles = [];
 
     if (type === 'scissors') {

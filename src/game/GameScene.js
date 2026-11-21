@@ -20,6 +20,10 @@ import btnMovesImg from '../assets/btn-moves.png';
 import { getLevelData } from './Levels';
 import AudioManager from './AudioManager';
 import bgMusic from '../assets/bg-music.mp3';
+import swipeSnd from '../assets/swipe.mp3';
+import scissorsSnd from '../assets/scissors.mp3';
+import umbrellaSnd from '../assets/umbrella.mp3';
+import paletteSnd from '../assets/palette.mp3';
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -44,19 +48,15 @@ export default class GameScene extends Phaser.Scene {
     this.load.image('level-bg', levelBgImg);
     this.load.image('btn-moves', btnMovesImg);
     this.load.audio('bg-music', bgMusic);
+    this.load.audio('swipe', swipeSnd);
+    this.load.audio('scissors', scissorsSnd);
+    this.load.audio('umbrella', umbrellaSnd);
+    this.load.audio('palette', paletteSnd);
   }
 
   create() {
     // Создаем менеджер звука
     this.audioManager = new AudioManager(this);
-
-    // Запуск музыки после первого клика (для обхода блокировки в браузерах)
-    this.input.once('pointerdown', () => {
-      this.audioManager.playBackgroundMusic();
-    });
-
-    this.audioManager = new AudioManager(this);
-    // Музыку не запускаем! Только эффекты.
 
     // Фон комнаты, картинка с окном
     this.add.image(215, 466, 'bg-room').setDisplaySize(430, 932);
@@ -124,6 +124,7 @@ export default class GameScene extends Phaser.Scene {
           // Если там есть фишка — меняем их местами
           if (targetTile) {
             this.board.swapTiles(this.dragTile, targetTile);
+            this.audioManager.playSound('swipe');
 
             // Проверяем конец игры чуть позже, после анимации
             this.time.delayedCall(500, () => this.checkGameState());
@@ -133,11 +134,6 @@ export default class GameScene extends Phaser.Scene {
 
       // Сбрасываем активную фишку
       this.dragTile = null;
-    });
-
-    // Запуск музыки после первого клика
-    this.input.once('pointerdown', () => {
-      this.audioManager.playBackgroundMusic();
     });
 
     // 👇 ДОБАВЛЯЕМ ЭТОТ БЛОК:
