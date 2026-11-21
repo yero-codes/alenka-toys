@@ -44,4 +44,14 @@ export default class AudioManager {
       this.scene.sound.play(key, { volume: volume });
     }
   }
+  
+    // Метод для полной остановки и очистки (при выходе из сцены)
+  destroy() {
+    if (this.bgMusic) {
+      this.bgMusic.stop();
+      this.bgMusic.destroy(); // Удаляем объект из памяти
+      this.bgMusic = null;
+    }
+  }
 }
+
