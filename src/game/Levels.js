@@ -94,10 +94,11 @@ export const LEVELS = {
     { type: 'tile-pyramid', count: 35 },
     { type: 'tile-bow', count: 35 }
   ]},
-  25: { moves: 14, targets: [
-    { type: 'tile-cube-blue', count: 40 },
-    { type: 'tile-cube-red', count: 40 },
-    { type: 'tile-ball-green', count: 40 }
+  25: { moves: 12, targets: [
+    { type: 'tile-duck', count: 20 },
+    { type: 'tile-pyramid', count: 20 },
+    { type: 'tile-ball-orange', count: 20 },
+    { type: 'tile-cube-yellow', count: 20 }
   ]},
 
   // --- БЛОК 4: ХАРДКОР (26-30 уровни) ---

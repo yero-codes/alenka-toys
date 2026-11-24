@@ -26,7 +26,7 @@ function PhaserGame() {
       };
 
       const game = new Phaser.Game(config);
-
+      
       // Принудительный ресайз через 200 мс
       setTimeout(() => {
         game.scale.refresh();

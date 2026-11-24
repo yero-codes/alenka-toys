@@ -4,9 +4,11 @@ import boardBgImg from '../assets/board-bg.png';
 import bowImg from '../assets/tile-bow.png';
 import cubeBlueImg from '../assets/tile-cube-blue.png';
 import cubeRedImg from '../assets/tile-cube-red.png';
+import cubeYellowImg from '../assets/tile-cube-yellow.png';
 import duckImg from '../assets/tile-duck.png';
 import pyramidImg from '../assets/tile-pyramid.png';
 import ballGreenImg from '../assets/tile-ball-green.png';
+import ballOrangeImg from '../assets/tile-ball-orange.png';
 import scissorsBonusImg from '../assets/tile-scissors.png';
 import umbrellaBonusImg from '../assets/tile-umbrella.png';
 import paletteBonusImg from '../assets/tile-palette.png';
@@ -39,9 +41,11 @@ export default class GameScene extends Phaser.Scene {
     this.load.image('tile-bow', bowImg);
     this.load.image('tile-cube-blue', cubeBlueImg);
     this.load.image('tile-cube-red', cubeRedImg);
+    this.load.image('tile-cube-yellow', cubeYellowImg);
     this.load.image('tile-duck', duckImg);
     this.load.image('tile-pyramid', pyramidImg);
     this.load.image('tile-ball-green', ballGreenImg);
+    this.load.image('tile-ball-orange', ballOrangeImg);
     this.load.image('bonus-scissors', scissorsBonusImg);
     this.load.image('bonus-umbrella', umbrellaBonusImg);
     this.load.image('bonus-palette', paletteBonusImg);
@@ -90,7 +94,7 @@ export default class GameScene extends Phaser.Scene {
     let availableTiles = levelData.targets.map(t => t.type);
 
     // Если целей мало (например, 2), добавляем случайные фишки для разнообразия
-    const allPossibleTiles = ['tile-duck', 'tile-pyramid', 'tile-bow', 'tile-cube-blue', 'tile-cube-red', 'tile-ball-green'];
+    const allPossibleTiles = ['tile-duck', 'tile-pyramid', 'tile-bow', 'tile-cube-blue', 'tile-cube-red', 'tile-ball-green', 'tile-ball-orange', 'tile-cube-yeloww'];
     allPossibleTiles.forEach(tile => {
       if (availableTiles.length < 4 && !availableTiles.includes(tile)) {
         availableTiles.push(tile);

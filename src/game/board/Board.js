@@ -193,7 +193,7 @@ if (matches.size > 0) {
   if (this.hud) {
     this.hud.updateScore(this.hud.score + matches.size * 10);
     
-    // 👇 Сообщаем HUD о каждой собранной фишке
+    // Сообщаем HUD о каждой собранной фишке
     matches.forEach(tile => {
       if (!tile.getData('bonusType')) {
         this.hud.collectTile(tile.texture.key);
@@ -215,6 +215,12 @@ if (matches.size > 0) {
 
   return true;
 }
+
+//ДОБАВЛЯЕМ ПРОВЕРКУ ЕСТЬ ЛИ ВОЗМОЖНОСТЬ СДЕЛАТЬ ХОД
+    if (!this.hasPossibleMoves()) {
+      this.shuffleBoard();
+    }
+
     return false;
   }
 
@@ -386,6 +392,110 @@ if (matches.size > 0) {
       this.dropTiles();
       this.refillBoard();
       this.scene.time.delayedCall(300, () => this.checkMatches());
+    });
+  }
+
+    // Проверка, есть ли на доске хотя бы один возможный ход
+  hasPossibleMoves() {
+    // Перебираем все фишки, меняем их местами с соседями и проверяем, не создается ли тройка
+    for (let row = 0; row < this.boardSize; row++) {
+      for (let col = 0; col < this.boardSize; col++) {
+        // Проверяем свап вправо
+        if (col < this.boardSize - 1) {
+          if (this.isSwapValid(row, col, row, col + 1)) return true;
+        }
+        // Проверяем свап вниз
+        if (row < this.boardSize - 1) {
+          if (this.isSwapValid(row, col, row + 1, col)) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  // Вспомогательный метод: проверяет, создает ли свап двух фишек тройку
+  isSwapValid(row1, col1, row2, col2) {
+    const tile1 = this.tiles[row1][col1];
+    const tile2 = this.tiles[row2][col2];
+    if (!tile1 || !tile2) return false;
+
+    // Временно меняем местами (только в массиве)
+    this.tiles[row1][col1] = tile2;
+    this.tiles[row2][col2] = tile1;
+
+    // Проверяем, есть ли теперь совпадения (вызываем логику поиска, но без удаления)
+    const hasMatch = this.checkMatchesTemporary();
+    
+    // Возвращаем всё как было
+    this.tiles[row1][col1] = tile1;
+    this.tiles[row2][col2] = tile2;
+
+    return hasMatch;
+  }
+
+  // Временная проверка на совпадения (упрощенная копия checkMatches, только для проверки)
+  checkMatchesTemporary() {
+    // Горизонтальные
+    for (let row = 0; row < this.boardSize; row++) {
+      for (let col = 0; col < this.boardSize - 2; col++) {
+        const t1 = this.tiles[row][col];
+        const t2 = this.tiles[row][col + 1];
+        const t3 = this.tiles[row][col + 2];
+        if (t1 && t2 && t3 && t1.texture.key === t2.texture.key && t2.texture.key === t3.texture.key) {
+          return true;
+        }
+      }
+    }
+    // Вертикальные
+    for (let col = 0; col < this.boardSize; col++) {
+      for (let row = 0; row < this.boardSize - 2; row++) {
+        const t1 = this.tiles[row][col];
+        const t2 = this.tiles[row + 1][col];
+        const t3 = this.tiles[row + 2][col];
+        if (t1 && t2 && t3 && t1.texture.key === t2.texture.key && t2.texture.key === t3.texture.key) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  // Перемешиваем доску
+  shuffleBoard() {
+    console.log("Перемешиваем поле!");
+    
+    // 1. Собираем все текущие типы фишек в массив
+    let allTypes = [];
+    for (let row = 0; row < this.boardSize; row++) {
+      for (let col = 0; col < this.boardSize; col++) {
+        if (this.tiles[row][col]) {
+          allTypes.push(this.tiles[row][col].texture.key);
+        }
+      }
+    }
+
+    // 2. Перемешиваем массив (алгоритм Фишера-Йетса)
+    for (let i = allTypes.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [allTypes[i], allTypes[j]] = [allTypes[j], allTypes[i]];
+    }
+
+    // 3. Присваиваем фишкам новые типы
+    let index = 0;
+    for (let row = 0; row < this.boardSize; row++) {
+      for (let col = 0; col < this.boardSize; col++) {
+        const tile = this.tiles[row][col];
+        if (tile) {
+          tile.setTexture(allTypes[index]);
+          index++;
+        }
+      }
+    }
+
+    // 4. После перемешивания нужно проверить, не собрались ли случайные тройки
+    // Если собрались — вызываем каскад (checkMatches)
+    this.scene.time.delayedCall(300, () => {
+      this.checkMatches();
     });
   }
 }
