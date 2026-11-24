@@ -88,7 +88,17 @@ export default class SettingsScene extends Phaser.Scene {
       fontStyle: 'bold' 
     }).setOrigin(0.5);
     
-    // ... код иконок (🐱, 🐶, 🐰) ...
+     const icons = ['🐱', '🐶', '🐰'];
+    icons.forEach((icon, index) => {
+      const x = 150 + index * 60;
+      const iconBtn = this.add.text(x, 460, icon, { fontSize: '40px' })
+        .setInteractive({ useHandCursor: true });
+      
+      iconBtn.on('pointerdown', () => {
+        localStorage.setItem('playerAvatar', icon); // Сохраняем выбранную иконку
+        this.showToast('Иконка сохранена!');
+      });
+    });
 
     // --- Юридические ссылки ---
     this.add.text(215, 700, 'Политика конфиденциальности', { 

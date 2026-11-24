@@ -54,7 +54,22 @@ export default class MainMenu extends Phaser.Scene {
       if (this.audioManager) this.audioManager.stopBackgroundMusic(); // Останавливаем музыку
       this.scene.start('SettingsScene');
     });
+     
+        // 7. Иконка профиля игрока
+    // Берем сохраненную иконку или ставим кота по умолчанию
+    const savedAvatar = localStorage.getItem('playerAvatar') || '🐱'; 
+    
+    const avatarText = this.add.text(120, 50, savedAvatar, { 
+      fontSize: '40px' 
+    }).setOrigin(0.5);
 
+    // (Опционально) Сделаем иконку кликабельной, чтобы она вела в настройки
+    avatarText.setInteractive({ useHandCursor: true });
+    avatarText.on('pointerdown', () => {
+      if (this.audioManager) this.audioManager.stopBackgroundMusic();
+      this.scene.start('SettingsScene');
+    });
+    
     this.audioManager = new AudioManager(this);
     // Запускаем музыку меню (она будет крутиться, пока игрок в меню)
     this.audioManager.playBackgroundMusic('menu-music');
