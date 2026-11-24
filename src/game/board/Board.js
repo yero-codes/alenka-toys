@@ -189,34 +189,44 @@ export default class Board {
     }
 
     // Удаление
-if (matches.size > 0) {
-  if (this.hud) {
-    this.hud.updateScore(this.hud.score + matches.size * 10);
-    
-    // Сообщаем HUD о каждой собранной фишке
-    matches.forEach(tile => {
-      if (!tile.getData('bonusType')) {
-        this.hud.collectTile(tile.texture.key);
+    if (matches.size > 0) {
+      if (this.hud) {
+        this.hud.updateScore(this.hud.score + matches.size * 10);
+
+        // Сообщаем HUD о каждой собранной фишке
+        matches.forEach(tile => {
+          if (!tile.getData('bonusType')) {
+            this.hud.collectTile(tile.texture.key);
+          }
+        });
       }
-    });
-  }
 
-  matches.forEach(tile => {
-    if (tile.getData('bonusType')) return;
-    tile.destroy();
-    this.tiles[tile.gridY][tile.gridX] = null;
-  });
+      matches.forEach(tile => {
+        if (tile.getData('bonusType')) return;
+        // ДОБАВЛЯЕМ POP-ЭФФЕКТ
+        this.scene.tweens.add({
+          targets: tile,
+          scaleX: 1.5, // Увеличиваем
+          scaleY: 1.5,
+          alpha: 0,    // Делаем прозрачным
+          duration: 200, // За 0.2 секунды
+          onComplete: () => {
+            tile.destroy();
+            this.tiles[tile.gridY][tile.gridX] = null;
+          }
+        });
+      });
 
-  this.scene.time.delayedCall(250, () => {
-    this.dropTiles();
-    this.refillBoard();
-    this.scene.time.delayedCall(300, () => this.checkMatches());
-  });
+      this.scene.time.delayedCall(250, () => {
+        this.dropTiles();
+        this.refillBoard();
+        this.scene.time.delayedCall(300, () => this.checkMatches());
+      });
 
-  return true;
-}
+      return true;
+    }
 
-//ДОБАВЛЯЕМ ПРОВЕРКУ ЕСТЬ ЛИ ВОЗМОЖНОСТЬ СДЕЛАТЬ ХОД
+    //ДОБАВЛЯЕМ ПРОВЕРКУ ЕСТЬ ЛИ ВОЗМОЖНОСТЬ СДЕЛАТЬ ХОД
     if (!this.hasPossibleMoves()) {
       this.shuffleBoard();
     }
@@ -325,7 +335,7 @@ if (matches.size > 0) {
     bonusImg.on('pointerdown', () => this.activateBonus(bonusImg));
   }
 
-    activateBonus(bonusTile) {
+  activateBonus(bonusTile) {
     const type = bonusTile.getData('bonusType');
     const gridX = bonusTile.gridX;
     const gridY = bonusTile.gridY;
@@ -395,7 +405,7 @@ if (matches.size > 0) {
     });
   }
 
-    // Проверка, есть ли на доске хотя бы один возможный ход
+  // Проверка, есть ли на доске хотя бы один возможный ход
   hasPossibleMoves() {
     // Перебираем все фишки, меняем их местами с соседями и проверяем, не создается ли тройка
     for (let row = 0; row < this.boardSize; row++) {
@@ -425,7 +435,7 @@ if (matches.size > 0) {
 
     // Проверяем, есть ли теперь совпадения (вызываем логику поиска, но без удаления)
     const hasMatch = this.checkMatchesTemporary();
-    
+
     // Возвращаем всё как было
     this.tiles[row1][col1] = tile1;
     this.tiles[row2][col2] = tile2;
@@ -463,7 +473,7 @@ if (matches.size > 0) {
   // Перемешиваем доску
   shuffleBoard() {
     console.log("Перемешиваем поле!");
-    
+
     // 1. Собираем все текущие типы фишек в массив
     let allTypes = [];
     for (let row = 0; row < this.boardSize; row++) {
