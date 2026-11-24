@@ -121,6 +121,21 @@ export default class MainMenu extends Phaser.Scene {
 
         this.mainHud.updateLives(currentLives);
       }
+      // ВЫЧИСЛЯЕМ ОСТАВШЕЕСЯ ВРЕМЯ И ПЕРЕДАЕМ В HUD
+      const timeLeft = REGEN_TIME_MS - (now - lastRegenTime);
+      if (timeLeft > 0) {
+        const minutes = Math.floor(timeLeft / 60000);
+        const seconds = Math.floor((timeLeft % 60000) / 1000);
+        // Форматируем как 04:59
+        const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        this.mainHud.updateTimer(timeString);
+      } else {
+        this.mainHud.updateTimer(''); // Если время вышло, убираем таймер
+      }
+
+    } else {
+      // Если жизней максимум, таймер не нужен
+      if (this.mainHud) this.mainHud.updateTimer('');
     }
   }
 }
